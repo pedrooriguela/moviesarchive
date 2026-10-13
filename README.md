@@ -4,49 +4,52 @@ Antes de clonar o repositório, instale:
 
 - [.NET SDK 10](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org/) (recomendado via [nvm-windows](https://github.com/coreybutler/nvm-windows) ou [nvm](https://github.com/nvm-sh/nvm))
-- [PostgreSQL](https://www.postgresql.org/download/) (servidor rodando localmente, porta padrão `5432`)
-- Ferramenta de linha de comando do EF Core:
-
-  ```bash
-  dotnet tool install --global dotnet-ef
-  ```
+- Acesso de rede ao servidor PostgreSQL do projeto
 
 ## 1. Clonar o repositório
 
 ```bash
 git clone <URL_DO_REPOSITORIO>
-cd BooksArchive
+cd MoviesArchive
 ```
 
 ## 2. Configurar o back-end
 
-### 2.1. Configurar a connection string (User Secrets)
+### 2.1. Configurar os segredos locais
 
-A senha do banco **não** fica no repositório — cada pessoa configura a própria localmente:
-
-```bash
-cd BooksArchive.Api
-dotnet user-secrets init
-dotnet user-secrets set "PostgresSettings:ConnectionString" "Host=localhost;Port=5432;Database=booksarchive;Username=postgres;Password=SUA_SENHA_AQUI"
-```
-e rodar também
-```bash
-dotnet user-secrets set "JwtSettings:Key" "K7x9mP2vL8qR4wT6yU1zA3bC5dE8fG0hJ2kM4nO6pQ8sV1xW3zY5cB7dF9gH1jL=" 
-dotnet user-secrets set "JwtSettings:Issuer" "BooksArchive" 
-dotnet user-secrets set "JwtSettings:Audience" "BooksArchive"
-```
-
-Troque `SUA_SENHA_AQUI` pela senha do seu usuário `postgres` local.
-
-### 2.2. Criar o banco e aplicar as migrations
-
-Volte para a raiz da solution e rode:
+Cada desenvolvedor configura estes valores na própria máquina. User Secrets não são compartilhados pelo Git. A API já tem um `UserSecretsId`, então não é necessário executar `dotnet user-secrets init`.
 
 ```bash
-cd ..
-dotnet ef database update --project BooksArchive.Infra --startup-project BooksArchive.Api
+cd MoviesArchive.Api
+dotnet user-secrets set "PostgresSettings:ConnectionString" "Host=143.107.102.29;Port=65432;Database=t3_grupo_6;Username=admin_t3_g6;Password=SUA_SENHA_DO_BANCO"
 ```
 
-Isso cria o banco `booksarchive` (se ainda não existir) e todas as tabelas automaticamente.
+Informe a senha atual do banco por um canal seguro; não a coloque no README nem em arquivos versionados. Como a senha foi compartilhada em uma conversa, recomenda-se trocá-la antes de continuar usando o banco.
 
-### 2.3. Rodar a API
+Gere uma chave JWT forte com OpenSSL:
+
+```bash
+openssl rand -base64 48
+```
+
+Copie o valor gerado e configure os parâmetros JWT exigidos pela API:
+
+```bash
+dotnet user-secrets set "JwtSettings:Key" "COLE_A_CHAVE_GERADA_AQUI"
+dotnet user-secrets set "JwtSettings:Issuer" "MoviesArchive"
+dotnet user-secrets set "JwtSettings:Audience" "MoviesArchive"
+```
+
+`Issuer` e `Audience` devem corresponder aos valores usados na emissão dos tokens. A chave pode ser diferente para cada desenvolvedor; nesse caso, tokens criados por uma instância local não serão válidos em outra.
+
+### 2.2. Iniciar a API
+
+Ainda na pasta `MoviesArchive.Api`, inicie a aplicação:
+
+```bash
+dotnet run
+```
+
+No perfil de desenvolvimento, a API fica disponível em `http://localhost:5197`, com a documentação em `http://localhost:5197/swagger`.
+
+O banco `t3_grupo_6` e suas tabelas já existem. **Não execute `dotnet ef database update` nem rode `schema.sql` nesse banco**: as migrations atuais não representam todo o schema e podem tentar criar tabelas existentes.
