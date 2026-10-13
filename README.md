@@ -21,10 +21,8 @@ Cada desenvolvedor configura estes valores na própria máquina. User Secrets n�
 
 ```bash
 cd MoviesArchive.Api
-dotnet user-secrets set "PostgresSettings:ConnectionString" "Host=143.107.102.29;Port=65432;Database=t3_grupo_6;Username=admin_t3_g6;Password=SUA_SENHA_DO_BANCO"
+dotnet user-secrets set "PostgresSettings:ConnectionString" "Host=143.107.102.29;Port=65432;Database=t3_grupo_6;Username=admin_t3_g6;Password=3PhT9zQvER"
 ```
-
-Informe a senha atual do banco por um canal seguro; não a coloque no README nem em arquivos versionados. Como a senha foi compartilhada em uma conversa, recomenda-se trocá-la antes de continuar usando o banco.
 
 Gere uma chave JWT forte com OpenSSL:
 
