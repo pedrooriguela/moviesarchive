@@ -1,4 +1,5 @@
-﻿using MoviesArchive.Domain.Exceptions;
+﻿using Microsoft.AspNetCore.Authorization;
+using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using MoviesArchive.Infra.Repositories;
@@ -11,16 +12,13 @@ public class UserController : Controller
 {
     private readonly IUserRepository _userRepository;
     private readonly IUserLoginService _userLoginService;
-    private readonly IOpenLibraryConsumer _openLibraryConsumer;
 
     public UserController(
         IUserRepository userRepository,
-        IUserLoginService userLoginService,
-        IOpenLibraryConsumer openLibraryConsumer)
+        IUserLoginService userLoginService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
-        _openLibraryConsumer = openLibraryConsumer;
     }
 
     [HttpPost("api/users/signup")]
@@ -53,5 +51,13 @@ public class UserController : Controller
         {
             return Unauthorized(new { message = ex.Message });
         }
+    }
+
+
+    [Authorize]
+    [HttpPost("api/users/changePassword")]
+    public IActionResult CreateChangePassworRequest()
+    {
+        
     }
 }
