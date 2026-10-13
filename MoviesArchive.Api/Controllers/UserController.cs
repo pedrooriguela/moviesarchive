@@ -43,11 +43,11 @@ public class UserController : Controller
     }
 
     [HttpGet("api/users/signin")]
-    public IActionResult SignInAsync([FromQuery] LogInUserRequestDto request)
+    public async Task<IActionResult> SignInAsync([FromQuery] LogInUserRequestDto request)
     {
         try
         {
-            var token = _userLoginService.LogIn(request);
+            var token = await _userLoginService.LogInAsync(request);
             return Ok(new { token });
         }
         catch ( WrongUsernameOrPasswordException ex)
@@ -59,12 +59,6 @@ public class UserController : Controller
     [HttpPost("api/users/resetpassword")]
     public async Task<IActionResult> SendResetPasswordLink([FromBody] string email)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
-        
-        if (user == null)
-            return BadRequest(new { message = "User not found" });
-        
-        
-        
+        return Ok();
     }
 }

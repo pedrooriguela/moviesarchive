@@ -18,7 +18,7 @@ public class EmailController : Controller
     {
         try
         {
-            await _emailService.Send(request.ToEmail, request.Subject, request.Body);
+            await _emailService.SendAsync(request.ToEmail, request.Subject, request.Body);
         }
         catch(Exception ex)
         {
