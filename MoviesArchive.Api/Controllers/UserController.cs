@@ -52,12 +52,4 @@ public class UserController : Controller
             return Unauthorized(new { message = ex.Message });
         }
     }
-
-
-    [Authorize]
-    [HttpPost("api/users/changePassword")]
-    public IActionResult CreateChangePassworRequest()
-    {
-        
-    }
 }
