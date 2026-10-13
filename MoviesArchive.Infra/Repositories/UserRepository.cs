@@ -34,6 +34,16 @@ public class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task UpdatePasswordResetTokenAsync(Guid id, string? token, DateTime? expiresAt)
+    {
+        var user = await GetByIdAsync(id)!;
+        user.PasswordResetToken = token;
+        user.PasswordResetExpiresAt = expiresAt;
+        
+        _dbContext.Update(user);
+        await _dbContext.SaveChangesAsync();
+    }
+
     public async Task<bool> Delete(Guid id)
     {
         var user = GetByIdAsync(id);
@@ -51,15 +61,21 @@ public class UserRepository : IUserRepository
         return user;
     }
     
-    public User? GetByUsername(string username)
+    public async Task<User?> GetByUsernameAsync(string username)
     {
-        var user = _dbContext.Users.Where(p => p.Name == username).FirstOrDefault();
+        var user = await _dbContext.Users.Where(p => p.Name == username).FirstOrDefaultAsync();
         return user;
     }
 
-    public User? GetByEmail(string email)
+    public async Task<User?> GetByEmailAsync(string email)
     {
-        var user = _dbContext.Users.Where(p => p.Email == email).FirstOrDefault();
+        var user = await _dbContext.Users.Where(p => p.Email == email).FirstOrDefaultAsync();
+        return user;
+    }
+
+    public async Task<User?> GetByPasswordResetTokenAsync(string token)
+    {
+        var user = await _dbContext.Users.Where(p => p.PasswordResetToken == token).FirstOrDefaultAsync();
         return user;
     }
 }

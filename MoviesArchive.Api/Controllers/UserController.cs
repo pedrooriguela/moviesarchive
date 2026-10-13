@@ -2,8 +2,8 @@
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
-using MoviesArchive.Infra.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using MoviesArchive.Domain.Models.Users;
 
 namespace MoviesArchive.Api.Controllers;
 
@@ -11,14 +11,17 @@ namespace MoviesArchive.Api.Controllers;
 public class UserController : Controller
 {
     private readonly IUserRepository _userRepository;
+    private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
 
     public UserController(
         IUserRepository userRepository,
-        IUserLoginService userLoginService)
+        IUserLoginService userLoginService,
+        IJwtService jwtService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
+        _jwtService = jwtService;
     }
 
     [HttpPost("api/users/signup")]
@@ -51,5 +54,17 @@ public class UserController : Controller
         {
             return Unauthorized(new { message = ex.Message });
         }
+    }
+
+    [HttpPost("api/users/resetpassword")]
+    public async Task<IActionResult> SendResetPasswordLink([FromBody] string email)
+    {
+        var user = await _userRepository.GetByEmailAsync(email);
+        
+        if (user == null)
+            return BadRequest(new { message = "User not found" });
+        
+        
+        
     }
 }
