@@ -4,7 +4,11 @@ export default function HomePage({ user, onLogout }) {
   return (
     <div className="card">
       <h1>Olá, {user.name}!</h1>
-      <p className="subtitle">Você está conectado ao BooksArchive.</p>
+      <p className="subtitle">Você está conectado ao Movies Archive.</p>
+
+      {user.photoUrl && (
+        <img className="home-avatar" src={user.photoUrl} alt="Foto de perfil" />
+      )}
 
       <dl className="user-info">
         <dt>Usuário</dt>

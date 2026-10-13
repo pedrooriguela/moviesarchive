@@ -34,6 +34,18 @@ public class UserRepository : IUserRepository
         return true;
     }
 
+    public async Task<bool> UpdateProfileAsync(Guid id, string name, string? photoUrl)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        user.Name = name;
+        user.PhotoUrl = photoUrl;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
     public async Task<bool> Delete(Guid id)
     {
         var user = GetByIdAsync(id);
@@ -59,7 +71,8 @@ public class UserRepository : IUserRepository
 
     public User? GetByEmail(string email)
     {
-        var user = _dbContext.Users.Where(p => p.Email == email).FirstOrDefault();
+        var normalizedEmail = email.ToLowerInvariant();
+        var user = _dbContext.Users.FirstOrDefault(user => user.Email.ToLower() == normalizedEmail);
         return user;
     }
 }

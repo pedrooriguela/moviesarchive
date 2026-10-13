@@ -21,8 +21,6 @@ public class MoviesArchiveDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
-
         modelBuilder.Entity<Review>()
             .HasOne<User>()
             .WithMany()

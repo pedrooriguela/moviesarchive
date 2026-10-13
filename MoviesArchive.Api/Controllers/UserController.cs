@@ -4,6 +4,7 @@ using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using MoviesArchive.Infra.Repositories;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace MoviesArchive.Api.Controllers;
 
@@ -51,5 +52,68 @@ public class UserController : Controller
         {
             return Unauthorized(new { message = ex.Message });
         }
+    }
+
+    [Authorize]
+    [HttpGet("api/users/me")]
+    public async Task<IActionResult> GetMyProfileAsync()
+    {
+        var userId = GetAuthenticatedUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var user = await _userRepository.GetByIdAsync(userId.Value);
+        if (user == null)
+            return NotFound();
+
+        return Ok(new UserProfileResponseDto
+        {
+            Name = user.Name,
+            Email = user.Email,
+            PhotoUrl = user.PhotoUrl
+        });
+    }
+
+    [Authorize]
+    [HttpPut("api/users/me")]
+    public async Task<IActionResult> UpdateMyProfileAsync([FromBody] UpdateUserProfileRequestDto request)
+    {
+        var userId = GetAuthenticatedUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var name = request.Name.Trim();
+        if (name.Length == 0)
+            return BadRequest(new { message = "Nome de usuário é obrigatório." });
+
+        var existingUser = _userRepository.GetByUsername(name);
+        if (existingUser != null && existingUser.Id != userId.Value)
+            return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
+
+        var photoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
+        if (photoUrl != null &&
+            (!Uri.TryCreate(photoUrl, UriKind.Absolute, out var parsedPhotoUrl) ||
+             (parsedPhotoUrl.Scheme != Uri.UriSchemeHttp && parsedPhotoUrl.Scheme != Uri.UriSchemeHttps)))
+        {
+            return BadRequest(new { message = "A URL da foto deve usar HTTP ou HTTPS." });
+        }
+
+        var updated = await _userRepository.UpdateProfileAsync(userId.Value, name, photoUrl);
+        if (!updated)
+            return NotFound();
+
+        var user = await _userRepository.GetByIdAsync(userId.Value);
+        return Ok(new UserProfileResponseDto
+        {
+            Name = user!.Name,
+            Email = user.Email,
+            PhotoUrl = user.PhotoUrl
+        });
+    }
+
+    private Guid? GetAuthenticatedUserId()
+    {
+        var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(value, out var userId) ? userId : null;
     }
 }
