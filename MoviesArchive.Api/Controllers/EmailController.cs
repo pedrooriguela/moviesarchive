@@ -2,15 +2,20 @@ using MoviesArchive.Domain.Dtos;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using MoviesArchive.Infra.Services;
 
 namespace MoviesArchive.Api.Controllers;
 [ApiController]
 public class EmailController : Controller
 {
     private readonly IEmailService _emailService;
-    public EmailController(IEmailService emailService)
+    private readonly PasswordResetService _passwordResetService;
+    public EmailController(
+        IEmailService emailService,
+        PasswordResetService passwordResetService)
     {
         _emailService = emailService;
+        _passwordResetService = passwordResetService;
     }
 
     [HttpPost("api/email/send")]
@@ -18,7 +23,7 @@ public class EmailController : Controller
     {
         try
         {
-            await _emailService.Send(request.ToEmail, request.Subject, request.Body);
+            await _emailService.SendAsync(request.ToEmail, request.Subject, request.Body);
         }
         catch(Exception ex)
         {

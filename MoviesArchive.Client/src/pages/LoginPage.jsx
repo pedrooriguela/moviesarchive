@@ -2,7 +2,7 @@ import { useState } from 'react'
 import TextField from '../components/TextField.jsx'
 import { signIn } from '../services/api.js'
 
-export default function LoginPage({ onLoggedIn, onGoToSignUp, notice }) {
+export default function LoginPage({ onLoggedIn, onGoToSignUp, onGoToForgotPassword, notice }) {
   const [form, setForm] = useState({ name: '', password: '' })
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
@@ -65,6 +65,9 @@ export default function LoginPage({ onLoggedIn, onGoToSignUp, notice }) {
           onChange={handleChange}
           error={fieldErrors.password}
         />
+        <button type="button" className="link forgot-link" onClick={onGoToForgotPassword}>
+          Esqueci minha senha
+        </button>
         <button type="submit" className="btn-primary" disabled={loading}>
           {loading ? 'Entrando…' : 'Entrar'}
         </button>

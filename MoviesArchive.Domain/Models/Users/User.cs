@@ -1,4 +1,5 @@
-﻿using MoviesArchive.Domain.Common;
+﻿using System.ComponentModel.DataAnnotations;
+using MoviesArchive.Domain.Common;
 
 namespace MoviesArchive.Domain.Models.Users;
 
@@ -14,10 +15,13 @@ public class User : Entity
 
     public string Name { get; set; }
     public string Email { get; set; }
-    public string Password { get; set; } = string.Empty;
     public byte[]? PhotoData { get; set; }
     public string? PhotoContentType { get; set; }
+    public string? Password { get; set; }
+    public string? PasswordResetToken  { get; set; }
+    public DateTime? PasswordResetExpiresAt { get; set; }
     public Guid? PlanId { get; set; }
+
 
     public void SetPassword (string password) =>
         Password = password;
