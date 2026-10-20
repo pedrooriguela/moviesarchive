@@ -34,14 +34,37 @@ public class UserRepository : IUserRepository
         return true;
     }
 
-    public async Task<bool> UpdateProfileAsync(Guid id, string name, string? photoUrl)
+    public async Task<bool> UpdateProfileAsync(Guid id, string name)
     {
         var user = await GetByIdAsync(id);
         if (user == null)
             return false;
 
         user.Name = name;
-        user.PhotoUrl = photoUrl;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> UpdateProfilePhotoAsync(Guid id, byte[] photoData, string contentType)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        user.PhotoData = photoData;
+        user.PhotoContentType = contentType;
+        await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> RemoveProfilePhotoAsync(Guid id)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        user.PhotoData = null;
+        user.PhotoContentType = null;
         await _dbContext.SaveChangesAsync();
         return true;
     }

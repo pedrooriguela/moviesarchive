@@ -22,7 +22,8 @@ CREATE TABLE "Users" (
     "Name" text NOT NULL,
     "Email" text NOT NULL,
     "Password" text NOT NULL,
-    "PhotoUrl" text,
+    "PhotoData" bytea,
+    "PhotoContentType" text,
     "PlanId" uuid,
     CONSTRAINT "PK_Users" PRIMARY KEY ("Id"),
     CONSTRAINT "FK_Users_Plans_PlanId"

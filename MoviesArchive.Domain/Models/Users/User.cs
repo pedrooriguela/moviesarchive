@@ -15,7 +15,8 @@ public class User : Entity
     public string Name { get; set; }
     public string Email { get; set; }
     public string Password { get; set; } = string.Empty;
-    public string? PhotoUrl { get; set; }
+    public byte[]? PhotoData { get; set; }
+    public string? PhotoContentType { get; set; }
     public Guid? PlanId { get; set; }
 
     public void SetPassword (string password) =>

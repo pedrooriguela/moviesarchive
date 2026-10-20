@@ -1,3 +1,5 @@
+import { getPhotoSrc } from '../services/api.js'
+
 export default function HomePage({ user, onLogout }) {
   const expires = user.expiresAt?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
@@ -7,7 +9,7 @@ export default function HomePage({ user, onLogout }) {
       <p className="subtitle">Você está conectado ao Movies Archive.</p>
 
       {user.photoUrl && (
-        <img className="home-avatar" src={user.photoUrl} alt="Foto de perfil" />
+        <img className="home-avatar" src={getPhotoSrc(user.photoUrl)} alt="Foto de perfil" />
       )}
 
       <dl className="user-info">
