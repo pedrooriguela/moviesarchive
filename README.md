@@ -19,26 +19,48 @@ cd MoviesArchive
 
 Cada desenvolvedor configura estes valores na própria máquina. User Secrets não são compartilhados pelo Git. A API já tem um `UserSecretsId`, então não é necessário executar `dotnet user-secrets init`.
 
+A partir da raiz do repositório, entre na pasta da API:
+
 ```bash
 cd MoviesArchive.Api
+```
+
+**Banco de dados (PostgreSQL):**
+
+```bash
 dotnet user-secrets set "PostgresSettings:ConnectionString" "Host=143.107.102.29;Port=65432;Database=t3_grupo_6;Username=admin_t3_g6;Password=3PhT9zQvER"
 ```
 
-Gere uma chave JWT forte com OpenSSL:
+**JWT:**
 
 ```bash
-openssl rand -base64 48
-```
-
-Copie o valor gerado e configure os parâmetros JWT exigidos pela API:
-
-```bash
-dotnet user-secrets set "JwtSettings:Key" "COLE_A_CHAVE_GERADA_AQUI"
+dotnet user-secrets set "JwtSettings:Key" "K7x9mP2vL8qR4wT6yU1zA3bC5dE8fG0hJ2kM4nO6pQ8sV1xW3zY5cB7dF9gH1jL="
 dotnet user-secrets set "JwtSettings:Issuer" "MoviesArchive"
 dotnet user-secrets set "JwtSettings:Audience" "MoviesArchive"
 ```
 
-`Issuer` e `Audience` devem corresponder aos valores usados na emissão dos tokens. A chave pode ser diferente para cada desenvolvedor; nesse caso, tokens criados por uma instância local não serão válidos em outra.
+`Issuer` e `Audience` devem corresponder aos valores usados na emissão dos tokens. Com a mesma `Key` em todas as máquinas, um token gerado por uma instância local também é válido nas outras.
+
+**E-mail (SMTP do Gmail, usado no envio do link de redefinição de senha):**
+
+```bash
+dotnet user-secrets set "SmtpSettings:Host" "smtp.gmail.com"
+dotnet user-secrets set "SmtpSettings:Port" "587"
+dotnet user-secrets set "SmtpSettings:Username" "noreply.booksarchive@gmail.com"
+dotnet user-secrets set "SmtpSettings:Password" "kznw glgl uyjc ifnu"
+dotnet user-secrets set "SmtpSettings:FromName" "MoviesArchive"
+dotnet user-secrets set "SmtpSettings:FromEmail" "noreply.booksarchive@gmail.com"
+```
+
+> A senha SMTP é uma **senha de app** do Gmail (16 caracteres) e precisa ficar entre aspas por causa dos espaços.
+
+Confira se todos os valores foram gravados:
+
+```bash
+dotnet user-secrets list
+```
+
+A saída deve listar as 10 chaves acima (`PostgresSettings`, `JwtSettings` e `SmtpSettings`).
 
 ### 2.2. Iniciar a API
 
