@@ -3,6 +3,7 @@ using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using MoviesArchive.Domain.Dtos;
 using MoviesArchive.Domain.Models.Users;
 
 namespace MoviesArchive.Api.Controllers;
@@ -13,15 +14,18 @@ public class UserController : Controller
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
+    private readonly IPasswordResetService _passwordResetService;
 
     public UserController(
         IUserRepository userRepository,
         IUserLoginService userLoginService,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IPasswordResetService passwordResetService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
         _jwtService = jwtService;
+        _passwordResetService = passwordResetService;
     }
 
     [HttpPost("api/users/signup")]
@@ -56,9 +60,31 @@ public class UserController : Controller
         }
     }
 
-    [HttpPost("api/users/resetpassword")]
-    public async Task<IActionResult> SendResetPasswordLink([FromBody] string email)
+    [HttpPost("api/users/forgot-password")]
+    public async Task<IActionResult> SendResetPasswordLinkAsync([FromBody] string email)
     {
-        return Ok();
+        try
+        {
+            await _passwordResetService.AskPasswordResetAsync(email);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("api/users/reset-password")]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordDto request)
+    {
+        try
+        {
+            await _passwordResetService.ResetPasswordAsync(request.NewPassword, request.Token);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }
