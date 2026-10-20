@@ -39,9 +39,21 @@ public class UserRepository : IUserRepository
         var user = await GetByIdAsync(id)!;
         user.PasswordResetToken = token;
         user.PasswordResetExpiresAt = expiresAt;
-        
+
         _dbContext.Update(user);
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task<bool> UpdateProfileAsync(Guid id, string name, string? photoUrl)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        user.Name = name;
+        user.PhotoUrl = photoUrl;
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 
     public async Task<bool> Delete(Guid id)

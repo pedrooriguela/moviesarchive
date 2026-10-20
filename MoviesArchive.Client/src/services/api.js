@@ -118,3 +118,15 @@ export function authFetch(path, token, options = {}) {
     headers: { ...options.headers, Authorization: `Bearer ${token}` },
   })
 }
+
+export function getMyProfile(token) {
+  return authFetch('/api/users/me', token)
+}
+
+export function updateMyProfile(token, { name, photoUrl }) {
+  return authFetch('/api/users/me', token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, photoUrl: photoUrl || null }),
+  })
+}
