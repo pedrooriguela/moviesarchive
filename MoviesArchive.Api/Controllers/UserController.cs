@@ -1,8 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using Microsoft.AspNetCore.Mvc;
+using MoviesArchive.Domain.Dtos;
 using MoviesArchive.Domain.Models.Users;
 
 namespace MoviesArchive.Api.Controllers;
@@ -13,15 +15,18 @@ public class UserController : Controller
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
+    private readonly IPasswordResetService _passwordResetService;
 
     public UserController(
         IUserRepository userRepository,
         IUserLoginService userLoginService,
-        IJwtService jwtService)
+        IJwtService jwtService,
+        IPasswordResetService passwordResetService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
         _jwtService = jwtService;
+        _passwordResetService = passwordResetService;
     }
 
     [HttpPost("api/users/signup")]
@@ -88,7 +93,7 @@ public class UserController : Controller
         if (name.Length == 0)
             return BadRequest(new { message = "Nome de usuário é obrigatório." });
 
-        var existingUser = _userRepository.GetByUsername(name);
+        var existingUser = await _userRepository.GetByUsernameAsync(name);
         if (existingUser != null && existingUser.Id != userId.Value)
             return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
 
