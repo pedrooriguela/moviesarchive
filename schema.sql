@@ -22,7 +22,8 @@ CREATE TABLE "Users" (
     "Name" text NOT NULL,
     "Email" text NOT NULL,
     "Password" text NOT NULL,
-    "PhotoUrl" text,
+    "PhotoData" bytea,
+    "PhotoContentType" text,
     "PlanId" uuid,
     CONSTRAINT "PK_Users" PRIMARY KEY ("Id"),
     CONSTRAINT "FK_Users_Plans_PlanId"
@@ -105,12 +106,14 @@ CREATE UNIQUE INDEX "IX_Lists_UserId_Title" ON "Lists" ("UserId", "Title");
 CREATE TABLE "ListMovies" (
     "ListId" uuid NOT NULL,
     "MovieId" uuid NOT NULL,
+    "Position" integer NOT NULL DEFAULT 0,
     "AddedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PK_ListMovies" PRIMARY KEY ("ListId", "MovieId"),
     CONSTRAINT "FK_ListMovies_Lists_ListId"
         FOREIGN KEY ("ListId") REFERENCES "Lists" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_ListMovies_Movies_MovieId"
-        FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE
+        FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "CK_ListMovies_Position" CHECK ("Position" >= 0)
 );
 
 CREATE INDEX "IX_ListMovies_MovieId" ON "ListMovies" ("MovieId");

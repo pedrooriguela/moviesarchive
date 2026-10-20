@@ -3,15 +3,32 @@ import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
+import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
+import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
+import ListsPage from './pages/ListsPage.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
+import { getPhotoSrc } from './services/api.js'
 import './App.css'
+
+// Mesma rota usada pelo back-end ao montar o link do e-mail (PasswordResetService)
+const RESET_PATH = '/redefinir-senha'
+
+// Lê a URL uma vez: se veio do link do e-mail, abre direto a tela de nova senha
+function getInitialRoute() {
+  const resetToken = new URLSearchParams(window.location.search).get('token')
+  if (window.location.pathname === RESET_PATH) return { view: 'reset', resetToken }
+  return { view: 'login', resetToken: null }
+}
+
+const initialRoute = getInitialRoute()
 
 function App() {
   const [token, setToken] = useState(() => loadToken())
-  const [view, setView] = useState('login') // 'login' | 'signup'
+  const [view, setView] = useState(initialRoute.view) // 'login' | 'signup' | 'forgot' | 'reset'
+  const [resetToken] = useState(initialRoute.resetToken)
   const [notice, setNotice] = useState('')
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home')
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists'
 
   const user = getUserFromToken(token)
   const activeUser = { ...user, ...profile }
@@ -48,35 +65,51 @@ function App() {
       <main className="app">
         <header className="app-header">
           <div className="brand">Movies Archive</div>
-          {user && (
-            <button
-              type="button"
-              className="profile-menu-button"
-              onClick={() => setAuthenticatedView('profile')}
-              aria-label="Abrir perfil"
-              title="Perfil"
-            >
-              {activeUser.photoUrl ? (
-                <img src={activeUser.photoUrl} alt="" />
-              ) : (
-                <span>{activeUser.name?.trim().charAt(0).toUpperCase() || '?'}</span>
-              )}
-            </button>
+          {user && view !== 'reset' && (
+              <button
+                  type="button"
+                  className="profile-menu-button"
+                  onClick={() => setAuthenticatedView('profile')}
+                  aria-label="Abrir perfil"
+                  title="Perfil"
+              >
+                {activeUser.photoUrl ? (
+                    <img src={getPhotoSrc(activeUser.photoUrl)} alt="" />
+                ) : (
+                    <span>{activeUser.name?.trim().charAt(0).toUpperCase() || '?'}</span>
+                )}
+              </button>
           )}
         </header>
 
-        {user ? (
+        {view === 'reset' ? (
+            // O link do e-mail tem prioridade, mesmo com alguém logado no navegador
+            <ResetPasswordPage
+                resetToken={resetToken}
+                onPasswordReset={(msg) => {
+                  handleLogout()
+                  goTo('login', msg)
+                }}
+                onGoToForgotPassword={() => goTo('forgot')}
+            />
+        ) : user ? (
             authenticatedView === 'profile' ? (
-              <ProfilePage
-                token={token}
-                onBack={() => setAuthenticatedView('home')}
-                onProfileUpdated={setProfile}
-              />
+                <ProfilePage
+                    token={token}
+                    onBack={() => setAuthenticatedView('home')}
+                    onProfileUpdated={setProfile}
+                />
+            ) : authenticatedView === 'lists' ? (
+                <ListsPage
+                    token={token}
+                    onBack={() => setAuthenticatedView('home')}
+                />
             ) : (
-              <HomePage
-                user={activeUser}
-                onLogout={handleLogout}
-              />
+                <HomePage
+                    user={activeUser}
+                    onOpenLists={() => setAuthenticatedView('lists')}
+                    onLogout={handleLogout}
+                />
             )
         ) : view === 'reset' ? (
             // O link do e-mail tem prioridade, mesmo com alguém logado no navegador
@@ -96,11 +129,14 @@ function App() {
                 onSignedUp={(msg) => goTo('login', msg)}
                 onGoToLogin={() => goTo('login')}
             />
+        ) : view === 'forgot' ? (
+            <ForgotPasswordPage onGoToLogin={() => goTo('login')} />
         ) : (
             <LoginPage
                 notice={notice}
                 onLoggedIn={handleLoggedIn}
                 onGoToSignUp={() => goTo('signup')}
+                onGoToForgotPassword={() => goTo('forgot')}
             />
         )}
       </main>
