@@ -1,6 +1,6 @@
 import { getPhotoSrc } from '../services/api.js'
 
-export default function HomePage({ user, onLogout }) {
+export default function HomePage({ user, onOpenLists, onLogout }) {
   const expires = user.expiresAt?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
   return (
@@ -24,6 +24,10 @@ export default function HomePage({ user, onLogout }) {
           </>
         )}
       </dl>
+
+      <button type="button" className="btn-primary home-lists-button" onClick={onOpenLists}>
+        Minhas listas
+      </button>
 
       <button type="button" className="btn-secondary" onClick={onLogout}>
         Sair

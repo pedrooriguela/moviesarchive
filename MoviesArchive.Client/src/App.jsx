@@ -5,6 +5,7 @@ import SignUpPage from './pages/SignUpPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
+import ListsPage from './pages/ListsPage.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc } from './services/api.js'
 import './App.css'
@@ -27,7 +28,7 @@ function App() {
   const [resetToken] = useState(initialRoute.resetToken)
   const [notice, setNotice] = useState('')
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists'
 
   const user = getUserFromToken(token)
   const activeUser = { ...user, ...profile }
@@ -98,8 +99,17 @@ function App() {
                     onBack={() => setAuthenticatedView('home')}
                     onProfileUpdated={setProfile}
                 />
+            ) : authenticatedView === 'lists' ? (
+                <ListsPage
+                    token={token}
+                    onBack={() => setAuthenticatedView('home')}
+                />
             ) : (
-                <HomePage user={activeUser} onLogout={handleLogout} />
+                <HomePage
+                    user={activeUser}
+                    onOpenLists={() => setAuthenticatedView('lists')}
+                    onLogout={handleLogout}
+                />
             )
         ) : view === 'reset' ? (
             // O link do e-mail tem prioridade, mesmo com alguém logado no navegador

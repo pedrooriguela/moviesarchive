@@ -147,3 +147,58 @@ export function uploadMyProfilePhoto(token, photo) {
 export function removeMyProfilePhoto(token) {
   return authFetch('/api/users/me/photo', token, { method: 'DELETE' })
 }
+
+/** GET /api/movies?search=... — busca filmes pelo título */
+export function searchMovies(token, search) {
+  const params = new URLSearchParams({ search })
+  return authFetch(`/api/movies?${params}`, token)
+}
+
+/** GET /api/lists/me — todas as listas do usuário logado (inclusive privadas) */
+export function getMyLists(token) {
+  return authFetch('/api/lists/me', token)
+}
+
+/** POST /api/lists — body: CreateListRequestDto { title, description, isPublic } */
+export function createList(token, { title, description, isPublic }) {
+  return authFetch('/api/lists', token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description: description || null, isPublic }),
+  })
+}
+
+/** PUT /api/lists/{id} — body: UpdateListRequestDto { title, description, isPublic } */
+export function updateList(token, listId, { title, description, isPublic }) {
+  return authFetch(`/api/lists/${listId}`, token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ title, description: description || null, isPublic }),
+  })
+}
+
+export function deleteList(token, listId) {
+  return authFetch(`/api/lists/${listId}`, token, { method: 'DELETE' })
+}
+
+/** POST /api/lists/{id}/items — adiciona o filme no fim da lista */
+export function addListItem(token, listId, movieId) {
+  return authFetch(`/api/lists/${listId}/items`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ movieId }),
+  })
+}
+
+export function removeListItem(token, listId, movieId) {
+  return authFetch(`/api/lists/${listId}/items/${movieId}`, token, { method: 'DELETE' })
+}
+
+/** PUT /api/lists/{id}/items/order — movieIds com todos os filmes da lista, na nova ordem */
+export function updateListItemsOrder(token, listId, movieIds) {
+  return authFetch(`/api/lists/${listId}/items/order`, token, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ movieIds }),
+  })
+}
