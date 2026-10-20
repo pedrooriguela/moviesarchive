@@ -12,7 +12,13 @@ export class ApiError extends Error {
 }
 
 // Mapeia os nomes das propriedades dos DTOs C# para os campos do formulário
-const FIELD_MAP = { name: 'name', username: 'name', email: 'email', password: 'password' }
+const FIELD_MAP = {
+  name: 'name',
+  username: 'name',
+  email: 'email',
+  password: 'password',
+  newpassword: 'password', // senha nova da redefinição
+}
 
 async function parseError(response) {
   let data = null
@@ -82,6 +88,27 @@ export async function signIn({ name, password }) {
   const params = new URLSearchParams({ Name: name, Password: password })
   const data = await request(`/api/users/signin?${params}`, { method: 'GET' })
   return data.token
+}
+
+// ---- Recuperação de senha ----
+// Se as rotas ou os nomes dos campos no back-end forem outros, ajuste só aqui.
+
+/** Pede o e-mail com o link de redefinição. A API responde 200 mesmo se o e-mail não tiver conta. */
+export function requestPasswordReset(email) {
+  return request('/api/users/forgot-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(email),
+  })
+}
+
+/** Troca a senha usando o token que veio no link do e-mail. */
+export function resetPassword(token, newPassword) {
+  return request('/api/users/reset-password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, newPassword }),
+  })
 }
 
 /** Helper para chamadas futuras a endpoints protegidos ([Authorize]) */

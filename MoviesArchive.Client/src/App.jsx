@@ -38,6 +38,8 @@ function App() {
   }
 
   function goTo(nextView, message = '') {
+    // Ao sair da tela de nova senha, tira o token da barra de endereço
+    if (window.location.pathname === RESET_PATH) window.history.replaceState(null, '', '/')
     setNotice(message)
     setView(nextView)
   }
@@ -76,7 +78,19 @@ function App() {
                 onLogout={handleLogout}
               />
             )
-        ) : view === 'signup' ? (
+        ) : view === 'reset' ? (
+            // O link do e-mail tem prioridade, mesmo com alguém logado no navegador
+            <ResetPasswordPage
+                resetToken={resetToken}
+                onPasswordReset={(msg) => {
+                    handleLogout()
+                    goTo('login', msg)
+                }}
+                onGoToForgotPassword={() => goTo('forgot')}
+            />
+        ) : user ? (
+                <HomePage user={user} onLogout={handleLogout} />
+            ) : view === 'signup' ? (
             <SignUpPage
                 onLoggedIn={handleLoggedIn}
                 onSignedUp={(msg) => goTo('login', msg)}

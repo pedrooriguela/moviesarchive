@@ -22,10 +22,10 @@ public class UserLoginService : IUserLoginService
 
     public async Task CreateAccountAsync(CreateUserRequestDto createUserRequestDto)
     {
-        if (_userRepository.GetByUsername(createUserRequestDto.Name) != null)
+        if (await _userRepository.GetByUsernameAsync(createUserRequestDto.Name) != null)
             throw new UsernameAlreadyInUseException();
 
-        if (_userRepository.GetByEmail(createUserRequestDto.Email) != null)
+        if (await _userRepository.GetByEmailAsync(createUserRequestDto.Email) != null)
             throw new EmailAlreadyInUseException();
 
         var newUser = User.Builder.Create(createUserRequestDto.Name, createUserRequestDto.Email);
@@ -37,9 +37,9 @@ public class UserLoginService : IUserLoginService
         await _userRepository.AddAsync(newUser);
     }
 
-    public string LogIn(LogInUserRequestDto logInUserRequestDto)
+    public async Task<string> LogInAsync(LogInUserRequestDto logInUserRequestDto)
     {
-        var user = _userRepository.GetByUsername(logInUserRequestDto.Name);
+        var user = await _userRepository.GetByUsernameAsync(logInUserRequestDto.Name);
 
         if (user == null)
             throw new WrongUsernameOrPasswordException();

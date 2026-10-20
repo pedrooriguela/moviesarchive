@@ -6,5 +6,5 @@ namespace MoviesArchive.Domain.Interfaces;
 public interface IUserLoginService
 {
     Task CreateAccountAsync(CreateUserRequestDto createUserRequestDto);
-    string LogIn(LogInUserRequestDto logInUserRequestDto);
+    Task<string> LogInAsync(LogInUserRequestDto logInUserRequestDto);
 }

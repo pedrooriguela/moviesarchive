@@ -2,9 +2,8 @@
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
-using MoviesArchive.Infra.Repositories;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using MoviesArchive.Domain.Models.Users;
 
 namespace MoviesArchive.Api.Controllers;
 
@@ -12,14 +11,17 @@ namespace MoviesArchive.Api.Controllers;
 public class UserController : Controller
 {
     private readonly IUserRepository _userRepository;
+    private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
 
     public UserController(
         IUserRepository userRepository,
-        IUserLoginService userLoginService)
+        IUserLoginService userLoginService,
+        IJwtService jwtService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
+        _jwtService = jwtService;
     }
 
     [HttpPost("api/users/signup")]
@@ -41,11 +43,11 @@ public class UserController : Controller
     }
 
     [HttpGet("api/users/signin")]
-    public IActionResult SignInAsync([FromQuery] LogInUserRequestDto request)
+    public async Task<IActionResult> SignInAsync([FromQuery] LogInUserRequestDto request)
     {
         try
         {
-            var token = _userLoginService.LogIn(request);
+            var token = await _userLoginService.LogInAsync(request);
             return Ok(new { token });
         }
         catch ( WrongUsernameOrPasswordException ex)
@@ -115,5 +117,34 @@ public class UserController : Controller
     {
         var value = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
         return Guid.TryParse(value, out var userId) ? userId : null;
+    }
+
+
+[HttpPost("api/users/forgot-password")]
+    public async Task<IActionResult> SendResetPasswordLinkAsync([FromBody] string email)
+    {
+        try
+        {
+            await _passwordResetService.AskPasswordResetAsync(email);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("api/users/reset-password")]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordDto request)
+    {
+        try
+        {
+            await _passwordResetService.ResetPasswordAsync(request.NewPassword, request.Token);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -8,4 +8,5 @@ namespace MoviesArchive.Domain.Interfaces;
 public interface IJwtService
 {
     string GenerateToken(User user);
+    string GeneratePasswordResetToken(User user);
 }

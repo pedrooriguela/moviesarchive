@@ -181,6 +181,12 @@ form {
   text-decoration: underline;
 }
 
+.forgot-link {
+  align-self: flex-end;
+  margin-top: -8px;
+  font-size: 0.85rem;
+}
+
 .user-info {
   display: grid;
   grid-template-columns: auto 1fr;
