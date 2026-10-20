@@ -15,10 +15,11 @@ public class User : Entity
 
     public string Name { get; set; }
     public string Email { get; set; }
+    public byte[]? PhotoData { get; set; }
+    public string? PhotoContentType { get; set; }
     public string? Password { get; set; }
     public string? PasswordResetToken  { get; set; }
     public DateTime? PasswordResetExpiresAt { get; set; }
-    public string? PhotoUrl { get; set; }
     public Guid? PlanId { get; set; }
 
 

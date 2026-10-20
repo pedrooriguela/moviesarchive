@@ -123,10 +123,27 @@ export function getMyProfile(token) {
   return authFetch('/api/users/me', token)
 }
 
-export function updateMyProfile(token, { name, photoUrl }) {
+export function getPhotoSrc(photoUrl) {
+  return photoUrl ? `${API_URL}${photoUrl}` : null
+}
+
+export function updateMyProfile(token, { name }) {
   return authFetch('/api/users/me', token, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, photoUrl: photoUrl || null }),
+    body: JSON.stringify({ name }),
   })
+}
+
+export function uploadMyProfilePhoto(token, photo) {
+  const formData = new FormData()
+  formData.append('photo', photo)
+  return authFetch('/api/users/me/photo', token, {
+    method: 'PUT',
+    body: formData,
+  })
+}
+
+export function removeMyProfilePhoto(token) {
+  return authFetch('/api/users/me/photo', token, { method: 'DELETE' })
 }

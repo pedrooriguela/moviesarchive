@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
+import { getPhotoSrc } from './services/api.js'
 import './App.css'
 
 function App() {
@@ -57,7 +58,7 @@ function App() {
               title="Perfil"
             >
               {activeUser.photoUrl ? (
-                <img src={activeUser.photoUrl} alt="" />
+                <img src={getPhotoSrc(activeUser.photoUrl)} alt="" />
               ) : (
                 <span>{activeUser.name?.trim().charAt(0).toUpperCase() || '?'}</span>
               )}

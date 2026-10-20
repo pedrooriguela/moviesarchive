@@ -12,6 +12,7 @@ namespace MoviesArchive.Api.Controllers;
 [ApiController]
 public class UserController : Controller
 {
+    private const long MaxPhotoSize = 5 * 1024 * 1024;
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
@@ -77,8 +78,20 @@ public class UserController : Controller
         {
             Name = user.Name,
             Email = user.Email,
-            PhotoUrl = user.PhotoUrl
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
         });
+    }
+
+    [AllowAnonymous]
+    [HttpGet("api/users/{userId:guid}/photo")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<IActionResult> GetProfilePhotoAsync(Guid userId)
+    {
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user?.PhotoData == null || user.PhotoContentType == null)
+            return NotFound();
+
+        return File(user.PhotoData, user.PhotoContentType);
     }
 
     [Authorize]
@@ -97,15 +110,7 @@ public class UserController : Controller
         if (existingUser != null && existingUser.Id != userId.Value)
             return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
 
-        var photoUrl = string.IsNullOrWhiteSpace(request.PhotoUrl) ? null : request.PhotoUrl.Trim();
-        if (photoUrl != null &&
-            (!Uri.TryCreate(photoUrl, UriKind.Absolute, out var parsedPhotoUrl) ||
-             (parsedPhotoUrl.Scheme != Uri.UriSchemeHttp && parsedPhotoUrl.Scheme != Uri.UriSchemeHttps)))
-        {
-            return BadRequest(new { message = "A URL da foto deve usar HTTP ou HTTPS." });
-        }
-
-        var updated = await _userRepository.UpdateProfileAsync(userId.Value, name, photoUrl);
+        var updated = await _userRepository.UpdateProfileAsync(userId.Value, name);
         if (!updated)
             return NotFound();
 
@@ -114,8 +119,74 @@ public class UserController : Controller
         {
             Name = user!.Name,
             Email = user.Email,
-            PhotoUrl = user.PhotoUrl
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
         });
+    }
+
+    [Authorize]
+    [HttpPut("api/users/me/photo")]
+    [RequestSizeLimit(MaxPhotoSize + 64 * 1024)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxPhotoSize + 64 * 1024)]
+    public async Task<IActionResult> UpdateMyProfilePhotoAsync([FromForm] IFormFile? photo)
+    {
+        var userId = GetAuthenticatedUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        if (photo == null || photo.Length == 0)
+            return BadRequest(new { message = "Selecione uma foto para enviar." });
+
+        if (photo.Length > MaxPhotoSize)
+            return BadRequest(new { message = "A foto deve ter no máximo 5 MB." });
+
+        await using var buffer = new MemoryStream();
+        await photo.CopyToAsync(buffer);
+        var photoData = buffer.ToArray();
+        var contentType = DetectPhotoContentType(photoData);
+        if (contentType == null)
+            return BadRequest(new { message = "Envie uma imagem JPEG, PNG ou WebP válida." });
+
+        var updated = await _userRepository.UpdateProfilePhotoAsync(userId.Value, photoData, contentType);
+        if (!updated)
+            return NotFound();
+
+        return Ok(new { photoUrl = GetPhotoUrl(userId.Value, hasPhoto: true) });
+    }
+
+    [Authorize]
+    [HttpDelete("api/users/me/photo")]
+    public async Task<IActionResult> RemoveMyProfilePhotoAsync()
+    {
+        var userId = GetAuthenticatedUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        var removed = await _userRepository.RemoveProfilePhotoAsync(userId.Value);
+        if (!removed)
+            return NotFound();
+
+        return NoContent();
+    }
+
+    private static string? GetPhotoUrl(Guid userId, bool hasPhoto) =>
+        hasPhoto ? $"/api/users/{userId}/photo" : null;
+
+    private static string? DetectPhotoContentType(byte[] data)
+    {
+        if (data.AsSpan().StartsWith(new byte[] { 0xFF, 0xD8, 0xFF }))
+            return "image/jpeg";
+
+        if (data.AsSpan().StartsWith(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
+            return "image/png";
+
+        if (data.Length >= 12 &&
+            data.AsSpan(0, 4).SequenceEqual("RIFF"u8) &&
+            data.AsSpan(8, 4).SequenceEqual("WEBP"u8))
+        {
+            return "image/webp";
+        }
+
+        return null;
     }
 
     private Guid? GetAuthenticatedUserId()
