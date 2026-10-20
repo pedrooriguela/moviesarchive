@@ -41,6 +41,7 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IPasswordResetService, PasswordResetService>();
 builder.Services.AddScoped<IMovieListRepository, MovieListRepository>();
 builder.Services.AddScoped<IMovieListService, MovieListService>();
+builder.Services.AddScoped<IMovieRepository, MovieRepository>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
