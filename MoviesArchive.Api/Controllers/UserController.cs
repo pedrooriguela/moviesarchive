@@ -3,7 +3,6 @@ using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users.Dtos;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
 using MoviesArchive.Domain.Models.Users;
 
 namespace MoviesArchive.Api.Controllers;
@@ -120,9 +119,32 @@ public class UserController : Controller
         return Guid.TryParse(value, out var userId) ? userId : null;
     }
 
-    [HttpPost("api/users/resetpassword")]
-    public async Task<IActionResult> SendResetPasswordLink([FromBody] string email)
+
+[HttpPost("api/users/forgot-password")]
+    public async Task<IActionResult> SendResetPasswordLinkAsync([FromBody] string email)
     {
-        return Ok();
+        try
+        {
+            await _passwordResetService.AskPasswordResetAsync(email);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpPost("api/users/reset-password")]
+    public async Task<IActionResult> ResetPasswordAsync([FromBody] ResetPasswordDto request)
+    {
+        try
+        {
+            await _passwordResetService.ResetPasswordAsync(request.NewPassword, request.Token);
+            return Ok();
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -3,7 +3,7 @@ using MoviesArchive.Domain.Interfaces;
 
 namespace MoviesArchive.Infra.Services;
 
-public class PasswordResetService
+public class PasswordResetService : IPasswordResetService
 {
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
@@ -39,7 +39,7 @@ public class PasswordResetService
         
         user.Password = _passwordHasherService.Hash(user, newPassword);
         await _userRepository.UpdatePasswordResetTokenAsync(user.Id, null, null);
-        await _userRepository.UpdateAsync(user.Id, user.Name, newPassword);
+        await _userRepository.UpdateAsync(user.Id, user.Name, user.Password);
         return true;
     }
     
