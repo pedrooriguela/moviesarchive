@@ -16,7 +16,8 @@ function validate(form) {
   return errs
 }
 
-export default function SignUpPage({ onLoggedIn, onSignedUp, onGoToLogin }) {
+// hint: título que o visitante clicou na vitrine, para contextualizar o cadastro
+export default function SignUpPage({ hint, onLoggedIn, onSignedUp, onGoToLogin }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
@@ -60,9 +61,12 @@ export default function SignUpPage({ onLoggedIn, onSignedUp, onGoToLogin }) {
   }
 
   return (
-    <div className="card">
-      <h1>Criar conta</h1>
-      <p className="subtitle">Comece a montar seu acervo de livros</p>
+    <>
+      <p className="dialog-lead">
+        {hint
+          ? `Crie sua conta para abrir a ficha de ${hint}.`
+          : 'Crie sua conta e comece a montar seu acervo de filmes.'}
+      </p>
 
       {error && <div className="alert alert-error">{error}</div>}
 
@@ -103,8 +107,8 @@ export default function SignUpPage({ onLoggedIn, onSignedUp, onGoToLogin }) {
           onChange={handleChange}
           error={fieldErrors.confirmPassword}
         />
-        <button type="submit" className="btn-primary" disabled={loading}>
-          {loading ? 'Criando conta…' : 'Criar conta'}
+        <button type="submit" className="btn-primary dialog-submit" disabled={loading}>
+          {loading ? 'Criando conta…' : 'Criar minha conta'}
         </button>
       </form>
 
@@ -114,6 +118,6 @@ export default function SignUpPage({ onLoggedIn, onSignedUp, onGoToLogin }) {
           Entrar
         </button>
       </p>
-    </div>
+    </>
   )
 }

@@ -39,9 +39,8 @@ export default function LoginPage({ onLoggedIn, onGoToSignUp, onGoToForgotPasswo
   }
 
   return (
-    <div className="card">
-      <h1>Entrar</h1>
-      <p className="subtitle">Acesse sua conta do BooksArchive</p>
+    <>
+      <p className="dialog-lead">Entre com seu nome de usuário e sua senha.</p>
 
       {notice && <div className="alert alert-success">{notice}</div>}
       {error && <div className="alert alert-error">{error}</div>}
@@ -68,17 +67,17 @@ export default function LoginPage({ onLoggedIn, onGoToSignUp, onGoToForgotPasswo
         <button type="button" className="link forgot-link" onClick={onGoToForgotPassword}>
           Esqueci minha senha
         </button>
-        <button type="submit" className="btn-primary" disabled={loading}>
+        <button type="submit" className="btn-primary dialog-submit" disabled={loading}>
           {loading ? 'Entrando…' : 'Entrar'}
         </button>
       </form>
 
       <p className="switch">
-        Não tem conta?{' '}
+        Ainda não tem conta?{' '}
         <button type="button" className="link" onClick={onGoToSignUp}>
           Criar conta
         </button>
       </p>
-    </div>
+    </>
   )
 }

@@ -201,7 +201,6 @@ export default function ListsPage({ token, onBack }) {
           ← Voltar
         </button>
         <div>
-          <p className="eyebrow">Coleção</p>
           <h1>Minhas listas</h1>
         </div>
       </div>

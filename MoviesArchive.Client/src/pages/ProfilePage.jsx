@@ -97,7 +97,6 @@ export default function ProfilePage({ token, onBack, onProfileUpdated }) {
           ← Voltar
         </button>
         <div>
-          <p className="eyebrow">Conta</p>
           <h1>Seu perfil</h1>
         </div>
       </div>

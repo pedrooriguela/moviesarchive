@@ -1,39 +1,37 @@
+/* Tema "Movies Archive, 1997": cores e bordas de Windows 95 */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #f7f6fa;
-  --card-bg: #fff;
-  --border: #e5e4e7;
-  --accent: #aa3bff;
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --error: #c62828;
-  --error-bg: rgba(198, 40, 40, 0.1);
-  --success: #2e7d32;
-  --success-bg: rgba(46, 125, 50, 0.1);
-  --shadow: rgba(0, 0, 0, 0.08) 0 10px 15px -3px, rgba(0, 0, 0, 0.04) 0 4px 6px -2px;
+  /* Paleta */
+  --bg: #d8d3c0;            /* bege de monitor (fundo da página) */
+  --panel: #c0c0c0;         /* cinza de janela */
+  --accent: #000080;        /* azul de barra de título */
+  --link: #0000ee;          /* azul de hyperlink */
+  --amber: #f2b630;         /* âmbar de letreiro */
+  --text: #1a1a1a;
+  --text-h: #000000;
+  --card-bg: #c0c0c0;
+  --border: #808080;
+  --accent-border: #000080;
+  --error: #800000;
+  --error-bg: #ffffff;
+  --success: #006400;
+  --success-bg: #ffffff;
 
-  font: 16px/1.5 system-ui, 'Segoe UI', Roboto, sans-serif;
-  color-scheme: light dark;
+  /* Bordas em bisel */
+  --raised: inset 1px 1px #ffffff, inset -1px -1px #000000,
+    inset 2px 2px #dfdfdf, inset -2px -2px #808080;
+  --sunken: inset 1px 1px #808080, inset -1px -1px #ffffff,
+    inset 2px 2px #000000, inset -2px -2px #dfdfdf;
+  --shadow: var(--raised);
+
+  /* Tipografia: títulos em pixel de terminal, corpo em Verdana (fonte da web da época) */
+  --font-display: 'VT323', 'Courier New', monospace;
+  --font-body: Verdana, Tahoma, Geneva, sans-serif;
+
+  font: 15px/1.45 var(--font-body);
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   -webkit-font-smoothing: antialiased;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --card-bg: #1f2028;
-    --border: #2e303a;
-    --accent: #c084fc;
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --error: #f87171;
-    --error-bg: rgba(248, 113, 113, 0.12);
-    --success: #4ade80;
-    --success-bg: rgba(74, 222, 128, 0.12);
-    --shadow: rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 }
 
 *,

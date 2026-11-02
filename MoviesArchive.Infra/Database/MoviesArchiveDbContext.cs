@@ -62,5 +62,14 @@ public class MoviesArchiveDbContext : DbContext
             .HasOne(item => item.Movie)
             .WithMany()
             .HasForeignKey(item => item.MovieId);
+
+        modelBuilder.Entity<Movie>()
+            .Property(movie => movie.Rating)
+            .HasColumnType("numeric");
+
+        modelBuilder.Entity<Movie>()
+            .Property(movie => movie.Genres)
+            .HasColumnType("text[]");
+
     }
 }

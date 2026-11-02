@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import LandingPage from './pages/LandingPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
@@ -6,6 +7,8 @@ import ProfilePage from './pages/ProfilePage.jsx'
 import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import ListsPage from './pages/ListsPage.jsx'
+import MoviePage from './pages/MoviePage.jsx'
+import Dialog from './components/Dialog.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc } from './services/api.js'
 import './App.css'
@@ -17,18 +20,24 @@ const RESET_PATH = '/redefinir-senha'
 function getInitialRoute() {
   const resetToken = new URLSearchParams(window.location.search).get('token')
   if (window.location.pathname === RESET_PATH) return { view: 'reset', resetToken }
-  return { view: 'login', resetToken: null }
+  return { view: 'landing', resetToken: null }
 }
 
 const initialRoute = getInitialRoute()
 
+const DIALOG_TITLES = { login: 'Entrar', signup: 'Criar nova conta' }
+
 function App() {
   const [token, setToken] = useState(() => loadToken())
-  const [view, setView] = useState(initialRoute.view) // 'login' | 'signup' | 'forgot' | 'reset'
+  const [view, setView] = useState(initialRoute.view) // 'landing' | 'forgot' | 'reset'
+  const [dialog, setDialog] = useState(null) // null | 'login' | 'signup' (só para visitantes)
+  const [signUpHint, setSignUpHint] = useState('') // título que o visitante quis abrir
   const [resetToken] = useState(initialRoute.resetToken)
   const [notice, setNotice] = useState('')
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie'
+  const [selectedMovieId, setSelectedMovieId] = useState(null)
+  const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
 
   const user = getUserFromToken(token)
   const activeUser = { ...user, ...profile }
@@ -38,12 +47,43 @@ function App() {
     if (token && !user) clearToken()
   }, [token, user])
 
+  // Tira o token da barra de endereço ao sair da tela de nova senha
+  function leaveResetRoute() {
+    if (window.location.pathname === RESET_PATH) window.history.replaceState(null, '', '/')
+  }
+
+  function openLogin(message = '') {
+    setNotice(message)
+    setDialog('login')
+  }
+
+  function openSignUp(hint = '') {
+    setSignUpHint(hint)
+    setDialog('signup')
+  }
+
+  function closeDialog() {
+    setDialog(null)
+  }
+
+  function openForgotPassword() {
+    leaveResetRoute()
+    setDialog(null)
+    setView('forgot')
+  }
+
+  function backToLanding() {
+    leaveResetRoute()
+    setView('landing')
+  }
+
   function handleLoggedIn(newToken) {
     saveToken(newToken)
     setToken(newToken)
     setProfile(null)
     setAuthenticatedView('home')
     setNotice('')
+    setDialog(null)
   }
 
   function handleLogout() {
@@ -51,20 +91,42 @@ function App() {
     setToken(null)
     setProfile(null)
     setAuthenticatedView('home')
-    setView('login')
+    setDialog(null)
+    setView('landing')
   }
 
-  function goTo(nextView, message = '') {
-    // Ao sair da tela de nova senha, tira o token da barra de endereço
-    if (window.location.pathname === RESET_PATH) window.history.replaceState(null, '', '/')
-    setNotice(message)
-    setView(nextView)
+  function goHome() {
+    setAuthenticatedView('home')
+    setHomeVisit((count) => count + 1)
+  }
+
+  function openMovie(movieId) {
+    setSelectedMovieId(movieId)
+    setAuthenticatedView('movie')
   }
 
   return (
       <main className="app">
         <header className="app-header">
-          <div className="brand">Movies Archive</div>
+          {user ? (
+              <button type="button" className="brand brand-button" onClick={goHome}>
+                Movies Archive
+              </button>
+          ) : (
+              <div className="brand">Movies Archive</div>
+          )}
+
+          {!user && view === 'landing' && (
+              <nav className="visitor-nav" aria-label="Acesso à conta">
+                <button type="button" className="btn-secondary" onClick={() => openLogin()}>
+                  Entrar
+                </button>
+                <button type="button" className="btn-primary" onClick={() => openSignUp()}>
+                  Criar conta
+                </button>
+              </nav>
+          )}
+
           {user && view !== 'reset' && (
               <button
                   type="button"
@@ -87,10 +149,11 @@ function App() {
             <ResetPasswordPage
                 resetToken={resetToken}
                 onPasswordReset={(msg) => {
+                  leaveResetRoute()
                   handleLogout()
-                  goTo('login', msg)
+                  openLogin(msg)
                 }}
-                onGoToForgotPassword={() => goTo('forgot')}
+                onGoToForgotPassword={openForgotPassword}
             />
         ) : user ? (
             authenticatedView === 'profile' ? (
@@ -99,6 +162,12 @@ function App() {
                     onBack={() => setAuthenticatedView('home')}
                     onProfileUpdated={setProfile}
                 />
+            ) : authenticatedView === 'movie' ? (
+                <MoviePage
+                    movieId={selectedMovieId}
+                    token={token}
+                    onBack={goHome}
+                />
             ) : authenticatedView === 'lists' ? (
                 <ListsPage
                     token={token}
@@ -106,38 +175,44 @@ function App() {
                 />
             ) : (
                 <HomePage
+                    key={homeVisit}
+                    token={token}
                     user={activeUser}
+                    onOpenMovie={openMovie}
                     onOpenLists={() => setAuthenticatedView('lists')}
+                    onOpenProfile={() => setAuthenticatedView('profile')}
                     onLogout={handleLogout}
                 />
             )
-        ) : view === 'reset' ? (
-            // O link do e-mail tem prioridade, mesmo com alguém logado no navegador
-            <ResetPasswordPage
-                resetToken={resetToken}
-                onPasswordReset={(msg) => {
-                    handleLogout()
-                    goTo('login', msg)
-                }}
-                onGoToForgotPassword={() => goTo('forgot')}
-            />
-        ) : user ? (
-                <HomePage user={user} onLogout={handleLogout} />
-            ) : view === 'signup' ? (
-            <SignUpPage
-                onLoggedIn={handleLoggedIn}
-                onSignedUp={(msg) => goTo('login', msg)}
-                onGoToLogin={() => goTo('login')}
-            />
         ) : view === 'forgot' ? (
-            <ForgotPasswordPage onGoToLogin={() => goTo('login')} />
-        ) : (
-            <LoginPage
-                notice={notice}
-                onLoggedIn={handleLoggedIn}
-                onGoToSignUp={() => goTo('signup')}
-                onGoToForgotPassword={() => goTo('forgot')}
+            <ForgotPasswordPage
+                onGoToLogin={() => {
+                  backToLanding()
+                  openLogin()
+                }}
             />
+        ) : (
+            <LandingPage onSignUp={openSignUp} onLogin={() => openLogin()} />
+        )}
+
+        {!user && dialog && (
+            <Dialog title={DIALOG_TITLES[dialog]} onClose={closeDialog}>
+              {dialog === 'login' ? (
+                  <LoginPage
+                      notice={notice}
+                      onLoggedIn={handleLoggedIn}
+                      onGoToSignUp={() => openSignUp()}
+                      onGoToForgotPassword={openForgotPassword}
+                  />
+              ) : (
+                  <SignUpPage
+                      hint={signUpHint}
+                      onLoggedIn={handleLoggedIn}
+                      onSignedUp={(msg) => openLogin(msg)}
+                      onGoToLogin={() => openLogin()}
+                  />
+              )}
+            </Dialog>
         )}
       </main>
   )
