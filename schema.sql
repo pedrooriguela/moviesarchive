@@ -62,8 +62,11 @@ CREATE TABLE "Movies" (
     "ReleaseDate" date,
     "Rating" numeric,
     "Language" text,
+    "Director" text,
     "PosterUrl" text,
-    CONSTRAINT "PK_Movies" PRIMARY KEY ("Id")
+    "Genres" text[] NOT NULL DEFAULT '{}',
+    CONSTRAINT "PK_Movies" PRIMARY KEY ("Id"),
+    CONSTRAINT "CK_Movies_Genres" CHECK ("Genres" <@ ARRAY['Acao','Comedia','Crime','Drama','Fantasia','FiccaoCientifica','Romance','Suspense','Terror']::text[])
 );
 
 -- ============================================================
