@@ -3,6 +3,7 @@ using MoviesArchive.Domain.Models.Movies;
 using MoviesArchive.Domain.Models.Reviews;
 using MoviesArchive.Domain.Models.Lists;
 using MoviesArchive.Domain.Models.Watchlist;
+using MoviesArchive.Domain.Models.History;
 using Microsoft.EntityFrameworkCore;
 
 namespace MoviesArchive.Infra.Database;
@@ -24,6 +25,7 @@ public class MoviesArchiveDbContext : DbContext
     public DbSet<ListMovie> ListMovies => Set<ListMovie>();
 
     public DbSet<WatchlistItem> Watchlist => Set<WatchlistItem>();
+    public DbSet<WatchHistoryEntry> WatchHistory => Set<WatchHistoryEntry>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -84,6 +86,19 @@ public class MoviesArchiveDbContext : DbContext
             .HasOne(item => item.Movie)
             .WithMany()
             .HasForeignKey(item => item.MovieId);
+
+        modelBuilder.Entity<WatchHistoryEntry>()
+            .HasOne<User>()
+            .WithMany()
+            .HasForeignKey(entry => entry.UserId);
+
+        modelBuilder.Entity<WatchHistoryEntry>()
+            .HasOne(entry => entry.Movie)
+            .WithMany()
+            .HasForeignKey(entry => entry.MovieId);
+
+        modelBuilder.Entity<WatchHistoryEntry>()
+            .HasIndex(entry => new { entry.UserId, entry.WatchedAt });
 
         modelBuilder.Entity<Movie>()
             .Property(movie => movie.Genres)

@@ -85,7 +85,7 @@ public class UserRepository : IUserRepository
         if (user == null)
             return false;
 
-        // Listas, avaliações, respostas, favoritos e seguidores saem junto com o usuário:
+        // Listas, avaliações, respostas, favoritos, seguidores e histórico saem junto com o usuário:
         // as chaves estrangeiras do banco (schema.sql) são ON DELETE CASCADE
         _dbContext.Remove(user);
         await _dbContext.SaveChangesAsync();
@@ -104,6 +104,9 @@ public class UserRepository : IUserRepository
         // Avaliações, respostas e listas públicas continuam.
         await _dbContext.Lists
             .Where(list => list.UserId == id && !list.IsPublic)
+            .ExecuteDeleteAsync();
+        await _dbContext.WatchHistory
+            .Where(entry => entry.UserId == id)
             .ExecuteDeleteAsync();
         await _dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM \"UserFavorites\" WHERE \"UserId\" = {id}");
