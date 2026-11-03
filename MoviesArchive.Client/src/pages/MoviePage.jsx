@@ -6,6 +6,7 @@ import ReviewsSection from '../components/ReviewsSection.jsx'
 import StatusBar from '../components/StatusBar.jsx'
 import { getMovie } from '../services/catalog.js'
 import { getMovieReviews, getMyMovieState } from '../services/reviews.js'
+import { recordWatch } from '../services/history.js'
 
 const REVIEWS_PAGE_SIZE = 10
 
@@ -13,7 +14,7 @@ function valueOrDash(value) {
   return value ? value : 'Não informado'
 }
 
-export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
+export default function MoviePage({ movieId, token, user, backLabel, onBack, onPlay }) {
   const [state, setState] = useState({ status: 'loading', movie: null, error: '' })
   const [reloadKey, setReloadKey] = useState(0)
   const [mine, setMine] = useState({ status: 'loading', data: null, error: '' })
@@ -21,6 +22,8 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
   const [reviews, setReviews] = useState({ status: 'loading', data: null, error: '' })
   const [reviewsKey, setReviewsKey] = useState(0)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [playError, setPlayError] = useState('')
 
   useEffect(() => {
     let active = true
@@ -94,6 +97,19 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
   }
 
   const { status, movie } = state
+
+  // Registra a visualização no histórico e só então abre o player
+  async function handlePlay() {
+    setPlaying(true)
+    setPlayError('')
+    try {
+      await recordWatch(movie, token)
+      onPlay(movie)
+    } catch (requestError) {
+      setPlayError(`Não foi possível abrir o filme: ${requestError.message}`)
+      setPlaying(false)
+    }
+  }
 
   function renderPanel() {
     if (mine.status === 'loading') {
@@ -211,6 +227,18 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
                   <span>ainda sem avaliações</span>
                 )}
               </p>
+            )}
+
+            <div className="movie-actions">
+              <button type="button" className="btn-primary movie-play" onClick={handlePlay} disabled={playing}>
+                <span aria-hidden="true">▶</span> {playing ? 'Abrindo...' : 'Assistir'}
+              </button>
+            </div>
+
+            {playError && (
+              <div className="alert alert-error" role="alert">
+                {playError}
+              </div>
             )}
 
             <dl className="ficha">

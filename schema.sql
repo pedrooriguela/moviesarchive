@@ -177,4 +177,24 @@ CREATE TABLE "Watchlist" (
 
 CREATE INDEX "IX_Watchlist_MovieId" ON "Watchlist" ("MovieId");
 
+-- ============================================================
+-- 11. HISTÓRICO DE VISUALIZAÇÕES
+-- ============================================================
+-- Uma linha por clique no play: o mesmo filme pode aparecer várias vezes
+CREATE TABLE "WatchHistory" (
+    "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "UserId" uuid NOT NULL,
+    "MovieId" uuid NOT NULL,
+    "WatchedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_WatchHistory" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_WatchHistory_Users_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_WatchHistory_Movies_MovieId"
+        FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE
+);
+
+-- A linha do tempo busca por usuário, do mais recente para o mais antigo
+CREATE INDEX "IX_WatchHistory_UserId_WatchedAt" ON "WatchHistory" ("UserId", "WatchedAt" DESC);
+CREATE INDEX "IX_WatchHistory_MovieId" ON "WatchHistory" ("MovieId");
+
 COMMIT;

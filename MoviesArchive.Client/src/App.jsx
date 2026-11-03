@@ -9,6 +9,8 @@ import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import ListsPage from './pages/ListsPage.jsx'
 import MoviePage from './pages/MoviePage.jsx'
 import WatchlistPage from './pages/WatchlistPage.jsx'
+import PlayerPage from './pages/PlayerPage.jsx'
+import HistoryPage from './pages/HistoryPage.jsx'
 import Dialog from './components/Dialog.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc } from './services/api.js'
@@ -28,6 +30,9 @@ const initialRoute = getInitialRoute()
 
 const DIALOG_TITLES = { login: 'Entrar', signup: 'Criar nova conta' }
 
+// Texto do "Voltar" da ficha, conforme a tela de onde o filme foi aberto
+const MOVIE_BACK_LABELS = { watchlist: 'Voltar à watchlist', history: 'Voltar ao histórico' }
+
 function App() {
   const [token, setToken] = useState(() => loadToken())
   const [view, setView] = useState(initialRoute.view) // 'landing' | 'forgot' | 'reset'
@@ -37,9 +42,10 @@ function App() {
   const [notice, setNotice] = useState('')
   const [landingNotice, setLandingNotice] = useState('') // aviso na vitrine, ex.: conta excluída
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
   const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
+  const [playingMovie, setPlayingMovie] = useState(null) // filme aberto no player
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
 
   const user = getUserFromToken(token)
@@ -119,7 +125,15 @@ function App() {
 
   function leaveMovie() {
     if (movieOrigin === 'watchlist') setAuthenticatedView('watchlist')
+    else if (movieOrigin === 'history') setAuthenticatedView('history')
     else goHome()
+  }
+
+  // Chamado pela ficha depois de registrar a visualização no histórico
+  function openPlayer(movie) {
+    setPlayingMovie(movie)
+    setAuthenticatedView('player')
+    window.scrollTo(0, 0)
   }
 
   return (
@@ -186,8 +200,20 @@ function App() {
                     movieId={selectedMovieId}
                     token={token}
                     user={activeUser}
-                    backLabel={movieOrigin === 'watchlist' ? 'Voltar à watchlist' : 'Voltar ao início'}
+                    backLabel={MOVIE_BACK_LABELS[movieOrigin] ?? 'Voltar ao início'}
                     onBack={leaveMovie}
+                    onPlay={openPlayer}
+                />
+            ) : authenticatedView === 'player' && playingMovie ? (
+                <PlayerPage
+                    movie={playingMovie}
+                    onBack={() => setAuthenticatedView('movie')}
+                />
+            ) : authenticatedView === 'history' ? (
+                <HistoryPage
+                    token={token}
+                    onBack={goHome}
+                    onOpenMovie={(movieId) => openMovie(movieId, 'history')}
                 />
             ) : authenticatedView === 'watchlist' ? (
                 <WatchlistPage
@@ -208,6 +234,7 @@ function App() {
                     onOpenMovie={openMovie}
                     onOpenLists={() => setAuthenticatedView('lists')}
                     onOpenWatchlist={() => setAuthenticatedView('watchlist')}
+                    onOpenHistory={() => setAuthenticatedView('history')}
                     onOpenProfile={() => setAuthenticatedView('profile')}
                     onLogout={handleLogout}
                 />

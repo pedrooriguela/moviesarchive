@@ -2259,3 +2259,226 @@ form {
   border-right: 1px solid var(--border);
   font-weight: 700;
 }
+
+/* ===== Botão de play na ficha ===== */
+.movie-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.movie-play {
+  width: auto;
+  margin-top: 0;
+  padding: 6px 22px;
+  font-size: 1.05rem;
+}
+
+/* ===== Player (por enquanto, só a tela de aviso) ===== */
+.player-body {
+  padding-top: 16px;
+}
+
+.video-player {
+  padding: 4px;
+  background: #000000;
+  box-shadow: var(--sunken);
+}
+
+.video-player-screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: #000000;
+}
+
+.video-player-screen .movie-art {
+  opacity: 0.3;
+}
+
+/* Para quando o <video> de verdade entrar no lugar da tela de aviso */
+.video-player-media {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000000;
+}
+
+.video-player-message {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  text-align: center;
+  color: #d8d3c0;
+}
+
+.video-player-message p {
+  margin: 0;
+  max-width: 46ch;
+}
+
+.video-player-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border: 3px solid var(--amber);
+  color: var(--amber);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.video-player-message .video-player-title {
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+
+.player-note {
+  margin: 12px 0 0;
+  font-size: 0.9rem;
+}
+
+/* ===== Histórico em linha do tempo ===== */
+.history-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-top: 16px;
+}
+
+.history-body .results-count,
+.history-body .alert {
+  margin: 0;
+}
+
+.timeline,
+.timeline-entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.timeline-day-title {
+  margin: 0 0 8px;
+  color: var(--text-h);
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+/* A linha vertical liga os filmes do mesmo dia */
+.timeline-entries {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-left: 6px;
+  padding-left: 20px;
+  border-left: 3px solid var(--accent);
+}
+
+.timeline-entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px;
+  background: #ffffff;
+  box-shadow: var(--sunken);
+}
+
+/* Marcador quadrado em cima da linha */
+.timeline-entry::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -28px;
+  width: 12px;
+  height: 12px;
+  background: var(--amber);
+  box-shadow: 0 0 0 2px #000000;
+  transform: translateY(-50%);
+}
+
+.timeline-time {
+  color: var(--text-h);
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+.timeline-thumb {
+  position: relative;
+  width: 44px;
+  aspect-ratio: 2 / 3;
+  overflow: hidden;
+  background: #000000;
+}
+
+.timeline-info {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.timeline-movie {
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+
+.timeline-year {
+  font-size: 0.8rem;
+}
+
+.timeline-more {
+  width: auto;
+  align-self: center;
+}
+
+@media (max-width: 600px) {
+  .video-player-icon {
+    width: 44px;
+    height: 44px;
+    font-size: 1.3rem;
+  }
+
+  .video-player-message {
+    gap: 6px;
+    font-size: 0.8rem;
+  }
+
+  .video-player-message .video-player-title {
+    font-size: 1.8rem;
+  }
+
+  .timeline-entry {
+    grid-template-columns: 44px 36px minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .timeline-thumb {
+    width: 36px;
+  }
+
+  .timeline-time {
+    font-size: 1.2rem;
+  }
+}

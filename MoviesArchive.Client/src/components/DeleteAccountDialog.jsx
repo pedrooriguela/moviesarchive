@@ -7,12 +7,12 @@ const DESTINATIONS = [
   {
     value: 'anonymize',
     title: 'Manter meu conteúdo de forma anônima',
-    text: 'Avaliações, respostas e listas públicas continuam, assinadas como “Usuário removido”. Listas privadas, favoritos e seguidores são apagados.',
+    text: 'Avaliações, respostas e listas públicas continuam, assinadas como “Usuário removido”. Listas privadas, favoritos, seguidores e o histórico de filmes assistidos são apagados.',
   },
   {
     value: 'delete',
     title: 'Apagar tudo',
-    text: 'Listas, avaliações, respostas, favoritos e seguidores são removidos junto com a conta.',
+    text: 'Listas, avaliações, respostas, favoritos, seguidores e histórico são removidos junto com a conta.',
   },
 ]
 
