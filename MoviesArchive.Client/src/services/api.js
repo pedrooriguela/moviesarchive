@@ -148,6 +148,15 @@ export function removeMyProfilePhoto(token) {
   return authFetch('/api/users/me/photo', token, { method: 'DELETE' })
 }
 
+/** DELETE /api/users/me — destination: 'anonymize' (mantém o conteúdo anônimo) ou 'delete' (apaga tudo) */
+export function deleteMyAccount(token, { password, destination }) {
+  return authFetch('/api/users/me', token, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password, destination }),
+  })
+}
+
 /** GET /api/movies?search=... — busca filmes pelo título */
 export function searchMovies(token, search) {
   const params = new URLSearchParams({ search })

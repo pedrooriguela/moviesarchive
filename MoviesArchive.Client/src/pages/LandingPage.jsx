@@ -19,11 +19,17 @@ const STEPS = [
   { title: 'Guarde o que falta ver', text: 'Mande filmes para a watchlist e organize listas públicas ou privadas.' },
 ]
 
-export default function LandingPage({ onSignUp, onLogin }) {
+export default function LandingPage({ notice, onSignUp, onLogin }) {
   const hero = VITRINE[0]
 
   return (
     <div className="landing">
+      {notice && (
+        <div className="alert alert-success" role="status">
+          {notice}
+        </div>
+      )}
+
       <section className="landing-hero" aria-labelledby="landing-titulo">
         <div className="landing-hero-art" aria-hidden="true">
           <MovieArt movie={hero} variant="backdrop" />

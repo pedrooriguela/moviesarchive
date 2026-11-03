@@ -17,17 +17,20 @@ public class UserController : Controller
     private readonly IJwtService _jwtService;
     private readonly IUserLoginService _userLoginService;
     private readonly IPasswordResetService _passwordResetService;
+    private readonly IAccountDeletionService _accountDeletionService;
 
     public UserController(
         IUserRepository userRepository,
         IUserLoginService userLoginService,
         IJwtService jwtService,
-        IPasswordResetService passwordResetService)
+        IPasswordResetService passwordResetService,
+        IAccountDeletionService accountDeletionService)
     {
         _userRepository = userRepository;
         _userLoginService = userLoginService;
         _jwtService = jwtService;
         _passwordResetService = passwordResetService;
+        _accountDeletionService = accountDeletionService;
     }
 
     [HttpPost("api/users/signup")]
@@ -106,6 +109,9 @@ public class UserController : Controller
         if (name.Length == 0)
             return BadRequest(new { message = "Nome de usuário é obrigatório." });
 
+        if (ReservedUserNames.IsReserved(name))
+            return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
+
         var existingUser = await _userRepository.GetByUsernameAsync(name);
         if (existingUser != null && existingUser.Id != userId.Value)
             return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
@@ -166,6 +172,30 @@ public class UserController : Controller
             return NotFound();
 
         return NoContent();
+    }
+
+    [Authorize]
+    [HttpDelete("api/users/me")]
+    public async Task<IActionResult> DeleteMyAccountAsync([FromBody] DeleteAccountRequestDto request)
+    {
+        var userId = GetAuthenticatedUserId();
+        if (userId == null)
+            return Unauthorized();
+
+        try
+        {
+            await _accountDeletionService.DeleteAccountAsync(
+                userId.Value, request.Password, request.Destination!.Value);
+            return NoContent();
+        }
+        catch (WrongPasswordException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UserNotFoundException)
+        {
+            return NotFound();
+        }
     }
 
     private static string? GetPhotoUrl(Guid userId, bool hasPhoto) =>
