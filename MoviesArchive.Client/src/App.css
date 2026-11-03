@@ -2192,3 +2192,70 @@ form {
     width: 12px;
   }
 }
+
+/* ===== Busca: gêneros e ações do formulário ===== */
+.genre-filter {
+  flex: 1 1 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 10px 8px;
+  border: 2px groove #ffffff;
+}
+
+.genre-filter legend {
+  padding: 0 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.genre-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+}
+
+.genre-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.genre-option input {
+  width: auto;
+  margin: 0;
+}
+
+.genre-hint {
+  margin: 6px 0 0;
+  font-size: 0.8rem;
+}
+
+.filter-error {
+  flex: 1 1 100%;
+  margin: 0;
+}
+
+.filter-actions {
+  flex: 1 1 100%;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.filter-actions .btn-primary,
+.filter-actions .btn-secondary {
+  width: auto;
+  margin-top: 0;
+  padding: 4px 24px;
+}
+
+/* "Todos" separado dos gêneros: é o estado de nenhum marcado */
+.genre-option-all {
+  padding-right: 18px;
+  border-right: 1px solid var(--border);
+  font-weight: 700;
+}

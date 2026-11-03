@@ -6,6 +6,7 @@ public record MovieSearchFilter(
     string? Language,
     int? YearFrom,
     int? YearTo,
+    IReadOnlyList<string> Genres,
     string Sort,
     int Page,
     int PageSize);

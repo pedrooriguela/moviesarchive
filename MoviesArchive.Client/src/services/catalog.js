@@ -8,7 +8,12 @@ export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
 function buildQuery(params) {
   const search = new URLSearchParams()
   for (const [key, value] of Object.entries(params)) {
-    if (value !== undefined && value !== null && value !== '') search.set(key, String(value))
+    if (Array.isArray(value)) {
+      // Listas viram parâmetros repetidos: genres=Acao&genres=Crime
+      value.forEach((item) => search.append(key, String(item)))
+    } else if (value !== undefined && value !== null && value !== '') {
+      search.set(key, String(value))
+    }
   }
   return search.toString()
 }
@@ -20,6 +25,7 @@ export function searchCatalog(params, token) {
     language: params.language,
     yearFrom: params.yearFrom,
     yearTo: params.yearTo,
+    genres: params.genres,
     sort: params.sort,
     page: params.page,
     pageSize: params.pageSize,

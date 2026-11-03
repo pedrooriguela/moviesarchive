@@ -4,7 +4,7 @@
 // (mocks/reviewStore.js), com as mesmas regras da API.
 //
 // Contratos (espelham o back-end):
-//   GET /api/movies/catalog?query&language&yearFrom&yearTo&sort&page&pageSize
+//   GET /api/movies/catalog?query&language&yearFrom&yearTo&genres(repetido)&sort&page&pageSize
 //   GET /api/movies/home   -> { featured: MovieDetail | null, shelves: [{ id, title, movies }] }
 //   GET /api/movies/{id}   -> MovieDetail
 //   MovieCard:   { id, title, releaseYear, language, director, genres, rating, posterUrl }
@@ -12,6 +12,7 @@
 //
 // Para testar o estado de erro na busca, pesquise por "erro".
 import { ratingStatsOf } from './reviewStore.js'
+import { GENRES } from '../constants/genres.js'
 
 export const MOVIES = [
   { id: 'm01', title: 'Metropolis', releaseYear: 1927, language: 'Alemão', director: 'Fritz Lang', genres: ['Drama', 'Ficção científica'], synopsis: 'Em uma cidade dividida entre elite e operários, um jovem descobre o preço do luxo de seus governantes.' },
@@ -48,6 +49,12 @@ function byRating(a, b) {
   return (b.rating ?? 0) - (a.rating ?? 0) || a.title.localeCompare(b.title, 'pt-BR')
 }
 
+// Sem avaliação por último; do pior para o melhor
+function byRatingAsc(a, b) {
+  if ((a.rating == null) !== (b.rating == null)) return a.rating == null ? 1 : -1
+  return (a.rating ?? 0) - (b.rating ?? 0) || a.title.localeCompare(b.title, 'pt-BR')
+}
+
 // Remove acentos e diferenças de maiúsculas para comparar textos
 function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
@@ -60,9 +67,16 @@ function matchesTerm(movie, term) {
 
 function sortMovies(items, sort) {
   const copy = [...items]
+  if (sort === 'rating-desc') return copy.map(withRating).sort(byRating)
+  if (sort === 'rating-asc') return copy.map(withRating).sort(byRatingAsc)
   if (sort === 'year-desc') return copy.sort((a, b) => b.releaseYear - a.releaseYear || a.title.localeCompare(b.title, 'pt-BR'))
   if (sort === 'year-asc') return copy.sort((a, b) => a.releaseYear - b.releaseYear || a.title.localeCompare(b.title, 'pt-BR'))
   return copy.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
+}
+
+// Os filmes do mock guardam o nome exibido; a busca recebe o código do gênero
+function genreLabel(code) {
+  return GENRES.find((genre) => genre.value === code)?.label ?? code
 }
 
 export function mockSearchCatalog({
@@ -70,6 +84,7 @@ export function mockSearchCatalog({
   language = '',
   yearFrom,
   yearTo,
+  genres = [],
   sort = 'default',
   page = 1,
   pageSize = 12,
@@ -87,6 +102,7 @@ export function mockSearchCatalog({
         .filter((movie) => !language || movie.language === language)
         .filter((movie) => yearFrom === undefined || movie.releaseYear >= yearFrom)
         .filter((movie) => yearTo === undefined || movie.releaseYear <= yearTo)
+        .filter((movie) => genres.length === 0 || genres.some((code) => movie.genres.includes(genreLabel(code))))
 
       const sorted = sortMovies(filtered, sort)
       const totalCount = sorted.length
