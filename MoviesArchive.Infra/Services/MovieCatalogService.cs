@@ -23,7 +23,7 @@ public class MovieCatalogService : IMovieCatalogService
 
         return new PagedResponseDto<MovieCardDto>
         {
-            Items = items.Select(ToCard).ToList(),
+            Items = await ToCardsAsync(items),
             Page = filter.Page,
             PageSize = filter.PageSize,
             TotalCount = totalCount,
@@ -36,44 +36,42 @@ public class MovieCatalogService : IMovieCatalogService
         var movie = await _movieRepository.GetByIdAsync(movieId)
             ?? throw new MovieNotFoundException();
 
-        var votes = await _movieRepository.CountReviewsAsync(movieId);
-        return ToDetail(movie, votes);
+        return await ToDetailAsync(movie);
     }
 
     public async Task<MovieHomeDto> GetHomeAsync()
     {
+        // Só entram filmes que já têm avaliações
         var topRated = await _movieRepository.GetTopRatedAsync(ShelfSize);
 
-        var shelves = new List<MovieShelfDto>
+        var shelves = new List<MovieShelfDto>();
+        if (topRated.Count > 0)
         {
-            new()
+            shelves.Add(new MovieShelfDto
             {
                 Id = "mais-bem-avaliados",
                 Title = "Mais bem avaliados",
-                Movies = topRated.Select(ToCard).ToList(),
-            },
-        };
+                Movies = await ToCardsAsync(topRated),
+            });
+        }
 
-        // Uma prateleira por gênero que tiver filmes avaliados
+        // Uma prateleira por gênero: primeiro os avaliados (pela média), depois os ainda sem avaliação
         foreach (var genre in Enum.GetValues<Genre>())
         {
-            var movies = await _movieRepository.GetTopRatedAsync(ShelfSize, genre.ToString());
+            var movies = await _movieRepository.GetTopRatedAsync(ShelfSize, genre.ToString(), onlyReviewed: false);
             if (movies.Count == 0) continue;
 
             shelves.Add(new MovieShelfDto
             {
                 Id = $"genero-{genre.ToString().ToLowerInvariant()}",
                 Title = genre.ToDisplayName(),
-                Movies = movies.Select(ToCard).ToList(),
+                Movies = await ToCardsAsync(movies),
             });
         }
 
         MovieDetailDto? featured = null;
         if (topRated.Count > 0)
-        {
-            var votes = await _movieRepository.CountReviewsAsync(topRated[0].Id);
-            featured = ToDetail(topRated[0], votes);
-        }
+            featured = await ToDetailAsync(topRated[0]);
 
         return new MovieHomeDto
         {
@@ -82,7 +80,20 @@ public class MovieCatalogService : IMovieCatalogService
         };
     }
 
-    private static MovieCardDto ToCard(Movie movie) => new()
+    // Cartões com a média das avaliações (tabela Reviews); sem avaliações, Rating fica null
+    internal async Task<List<MovieCardDto>> ToCardsAsync(IReadOnlyCollection<Movie> movies)
+    {
+        var stats = await _movieRepository.GetRatingStatsAsync(movies.Select(movie => movie.Id).ToList());
+        return movies.Select(movie => ToCard(movie, stats.GetValueOrDefault(movie.Id))).ToList();
+    }
+
+    private async Task<MovieDetailDto> ToDetailAsync(Movie movie)
+    {
+        var stats = await _movieRepository.GetRatingStatsAsync([movie.Id]);
+        return ToDetail(movie, stats.GetValueOrDefault(movie.Id));
+    }
+
+    private static MovieCardDto ToCard(Movie movie, MovieRatingStats? stats) => new()
     {
         Id = movie.Id,
         Title = movie.Title,
@@ -90,11 +101,11 @@ public class MovieCatalogService : IMovieCatalogService
         Language = movie.Language,
         Director = movie.Director,
         Genres = GenreNames(movie),
-        Rating = movie.Rating,
+        Rating = stats?.AverageRating,
         PosterUrl = movie.PosterUrl,
     };
 
-    private static MovieDetailDto ToDetail(Movie movie, int votes) => new()
+    private static MovieDetailDto ToDetail(Movie movie, MovieRatingStats? stats) => new()
     {
         Id = movie.Id,
         Title = movie.Title,
@@ -102,8 +113,8 @@ public class MovieCatalogService : IMovieCatalogService
         Language = movie.Language,
         Director = movie.Director,
         Genres = GenreNames(movie),
-        Rating = movie.Rating,
-        Votes = votes,
+        Rating = stats?.AverageRating,
+        Votes = stats?.ReviewCount ?? 0,
         Synopsis = movie.Description,
         PosterUrl = movie.PosterUrl,
     };

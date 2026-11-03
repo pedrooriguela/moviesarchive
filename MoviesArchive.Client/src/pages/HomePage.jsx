@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Hero from '../components/Hero.jsx'
 import MovieCard from '../components/MovieCard.jsx'
 import Shelf from '../components/Shelf.jsx'
+import StatusBar from '../components/StatusBar.jsx'
 import { getHome, searchCatalog } from '../services/catalog.js'
 
 const PAGE_SIZE = 12
@@ -15,7 +16,7 @@ const SORT_OPTIONS = [
 ]
 const DEFAULT_FILTERS = { language: '', yearFrom: '', yearTo: '', sort: 'default' }
 
-export default function HomePage({ user, token, onOpenLists, onOpenProfile, onLogout, onOpenMovie }) {
+export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, onOpenProfile, onLogout, onOpenMovie }) {
   const [draft, setDraft] = useState('') // o que está digitado
   const [query, setQuery] = useState('') // o que foi de fato buscado
   const [filters, setFilters] = useState(DEFAULT_FILTERS)
@@ -240,6 +241,7 @@ export default function HomePage({ user, token, onOpenLists, onOpenProfile, onLo
       </div>
 
       <nav className="menubar" aria-label="Menu principal">
+        <button type="button" onClick={onOpenWatchlist}>Watchlist</button>
         <button type="button" onClick={onOpenLists}>Minhas listas</button>
         <button type="button" onClick={onOpenProfile}>Meu perfil</button>
         <button type="button" onClick={onLogout}>Sair</button>
@@ -346,6 +348,15 @@ export default function HomePage({ user, token, onOpenLists, onOpenProfile, onLo
           </div>
         )}
       </div>
+
+      <StatusBar
+        items={[
+          `Conectado como ${user.name}`,
+          browsing && home.status === 'ready' && `${home.data.shelves.length} prateleiras`,
+          !browsing && result.status === 'ready' &&
+            `${result.data.totalCount} ${result.data.totalCount === 1 ? 'resultado' : 'resultados'}`,
+        ]}
+      />
     </section>
   )
 }
