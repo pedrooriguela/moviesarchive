@@ -94,19 +94,59 @@ public class MovieRepository : IMovieRepository
     public Task<int> CountReviewsAsync(Guid movieId) =>
         _dbContext.Reviews.CountAsync(review => review.MovieId == movieId);
 
-    public async Task<List<Movie>> GetTopRatedAsync(int limit, string? genre = null)
+    public async Task<Dictionary<Guid, MovieRatingStats>> GetRatingStatsAsync(IReadOnlyCollection<Guid> movieIds)
     {
-        var query = _dbContext.Movies.AsNoTracking().Where(movie => movie.Rating != null);
+        if (movieIds.Count == 0)
+            return new Dictionary<Guid, MovieRatingStats>();
+
+        var ids = movieIds.Distinct().ToList();
+        var rows = await _dbContext.Reviews
+            .AsNoTracking()
+            .Where(review => ids.Contains(review.MovieId))
+            .GroupBy(review => review.MovieId)
+            .Select(group => new
+            {
+                MovieId = group.Key,
+                Average = group.Average(review => review.Rating),
+                Count = group.Count(),
+            })
+            .ToListAsync();
+
+        return rows.ToDictionary(
+            row => row.MovieId,
+            row => new MovieRatingStats(Math.Round(row.Average, 2), row.Count));
+    }
+
+    // Ordena pela média das avaliações (tabela Reviews). Com onlyReviewed = false, os filmes
+    // ainda sem avaliação também entram, depois dos avaliados, em ordem de título.
+    public async Task<List<Movie>> GetTopRatedAsync(int limit, string? genre = null, bool onlyReviewed = true)
+    {
+        var query = _dbContext.Movies.AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(genre))
         {
             query = query.Where(movie => movie.Genres.Contains(genre));
         }
 
-        return await query
-            .OrderByDescending(movie => movie.Rating)
-            .ThenBy(movie => movie.Title)
+        var ranked = query.Select(movie => new
+        {
+            Movie = movie,
+            Average = _dbContext.Reviews
+                .Where(review => review.MovieId == movie.Id)
+                .Average(review => (decimal?)review.Rating),
+        });
+
+        if (onlyReviewed)
+        {
+            ranked = ranked.Where(row => row.Average != null);
+        }
+
+        return await ranked
+            .OrderBy(row => row.Average == null)
+            .ThenByDescending(row => row.Average)
+            .ThenBy(row => row.Movie.Title)
             .Take(limit)
+            .Select(row => row.Movie)
             .ToListAsync();
     }
 

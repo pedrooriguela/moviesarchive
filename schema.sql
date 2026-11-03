@@ -60,7 +60,6 @@ CREATE TABLE "Movies" (
     "Title" text NOT NULL,
     "Description" text,
     "ReleaseDate" date,
-    "Rating" numeric,
     "Language" text,
     "Director" text,
     "PosterUrl" text,

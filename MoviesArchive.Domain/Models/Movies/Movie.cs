@@ -15,7 +15,6 @@ public class Movie : Entity
     public string Title { get; set; }
     public DateOnly? ReleaseDate { get; set; }
     public string? Description { get; set; }
-    public decimal? Rating { get; set; }
     public string? Language { get; set; }
     public string? PosterUrl { get; set; }
     public string? Director { get; set; }

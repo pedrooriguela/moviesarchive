@@ -1,17 +1,11 @@
 // Avaliações e watchlist em memória, para usar sem a API (somem ao recarregar a página).
 // Não há avaliações pré-cadastradas: a lista de cada filme começa vazia.
 // Os formatos seguem o back-end: ReviewResponseDto, MovieReviewsResponseDto e MovieUserStateDto.
-import { MOVIES } from './movies.js'
+import { MOVIES, withRating } from './movies.js'
+import { reviewsOf } from './reviewStore.js'
 import { getUserFromToken } from '../services/token.js'
 
-// Começa sem nenhuma avaliação: só aparecem as que o usuário logado publicar nesta sessão.
-const reviewsByMovie = new Map() // movieId -> ReviewResponseDto[]
 const watchlistByUser = new Map() // userId -> [{ movieId, addedAt }]
-
-function reviewsOf(movieId) {
-  if (!reviewsByMovie.has(movieId)) reviewsByMovie.set(movieId, [])
-  return reviewsByMovie.get(movieId)
-}
 
 function delay(value, ms = 350) {
   return new Promise((resolve) => setTimeout(() => resolve(value), ms))
@@ -111,5 +105,10 @@ export function mockSetInWatchlist(movieId, inWatchlist, token) {
 export function mockGetMyWatchlist(token) {
   const user = currentUser(token)
   const items = watchlistByUser.get(user.id) ?? []
-  return delay(items.map((item) => MOVIES.find((movie) => movie.id === item.movieId)).filter(Boolean))
+  return delay(
+    items
+      .map((item) => MOVIES.find((movie) => movie.id === item.movieId))
+      .filter(Boolean)
+      .map(withRating),
+  )
 }

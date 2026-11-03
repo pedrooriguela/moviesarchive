@@ -8,5 +8,8 @@ public interface IMovieRepository
     Task<(List<Movie> Items, int TotalCount)> SearchAsync(MovieSearchFilter filter);
     Task<Movie?> GetByIdAsync(Guid movieId);
     Task<int> CountReviewsAsync(Guid movieId);
-    Task<List<Movie>> GetTopRatedAsync(int limit, string? genre = null);
+
+    // Só traz os filmes que têm avaliações; os que não têm ficam fora do dicionário
+    Task<Dictionary<Guid, MovieRatingStats>> GetRatingStatsAsync(IReadOnlyCollection<Guid> movieIds);
+    Task<List<Movie>> GetTopRatedAsync(int limit, string? genre = null, bool onlyReviewed = true);
 }

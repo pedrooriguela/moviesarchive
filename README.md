@@ -72,6 +72,8 @@ psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f data
 
 O script muda `Reviews.Rating` de inteiro (1 a 5) para `numeric(2,1)` (0,5 a 5, em passos de 0,5) e cria a tabela `Watchlist`. As notas já gravadas continuam válidas, e rodar o script de novo não quebra nada.
 
+A nota exibida nos filmes agora é a média das avaliações (tabela `Reviews`), e a coluna `Movies.Rating` deixou de ser usada pela API. Quando **todo o grupo** já estiver com a API nova, ela pode ser apagada com `database/2026-11-03_remover_movies_rating.sql`. Esse passo apaga as notas fixas antigas e não tem volta.
+
 ### 2.3. Iniciar a API
 
 Ainda na pasta `MoviesArchive.Api`, inicie a aplicação:

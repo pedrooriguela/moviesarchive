@@ -201,10 +201,15 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
               {facts && <p className="movie-facts">{facts}</p>}
             </div>
 
-            {movie.rating != null && (
+            {/* Mesma média e contagem da seção "Avaliações dos espectadores" */}
+            {reviews.data && (
               <p className="movie-catalog-rating">
-                <span>Nota do acervo</span>
-                <Stars value={movie.rating} />
+                <span>Média dos espectadores</span>
+                {reviews.data.totalCount > 0 && reviews.data.averageRating != null ? (
+                  <Stars value={reviews.data.averageRating} votes={reviews.data.totalCount} />
+                ) : (
+                  <span>ainda sem avaliações</span>
+                )}
               </p>
             )}
 

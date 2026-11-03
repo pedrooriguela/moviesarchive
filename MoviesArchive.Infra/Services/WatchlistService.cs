@@ -9,6 +9,7 @@ public class WatchlistService : IWatchlistService
 {
     private readonly IWatchlistRepository _watchlistRepository;
     private readonly IMovieRepository _movieRepository;
+    private readonly MovieCatalogService _movieCatalogService;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
@@ -16,12 +17,14 @@ public class WatchlistService : IWatchlistService
     {
         _watchlistRepository = watchlistRepository;
         _movieRepository = movieRepository;
+        _movieCatalogService = new MovieCatalogService(movieRepository);
     }
 
+    // Mesmos cartões do catálogo, com a média das avaliações
     public async Task<List<MovieCardDto>> GetMoviesAsync(Guid userId)
     {
         var movies = await _watchlistRepository.GetMoviesAsync(userId);
-        return movies.Select(MovieCatalogService.ToCard).ToList();
+        return await _movieCatalogService.ToCardsAsync(movies);
     }
 
     // Idempotente: adicionar um filme que já está na watchlist não dá erro
