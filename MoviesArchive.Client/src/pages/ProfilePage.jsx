@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import DeleteAccountDialog from '../components/DeleteAccountDialog.jsx'
 import { getMyProfile, getPhotoSrc, removeMyProfilePhoto, updateMyProfile, uploadMyProfilePhoto } from '../services/api.js'
 
-export default function ProfilePage({ token, onBack, onProfileUpdated }) {
+export default function ProfilePage({ token, onBack, onProfileUpdated, onAccountDeleted }) {
   const [profile, setProfile] = useState(null)
   const [name, setName] = useState('')
   const [selectedPhoto, setSelectedPhoto] = useState(null)
@@ -13,6 +14,7 @@ export default function ProfilePage({ token, onBack, onProfileUpdated }) {
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -197,6 +199,14 @@ export default function ProfilePage({ token, onBack, onProfileUpdated }) {
                   <button type="button" className="btn-primary" onClick={() => setIsEditing(true)}>
                     Editar perfil
                   </button>
+
+                  <fieldset className="danger-zone">
+                    <legend>Zona de perigo</legend>
+                    <p>Ao excluir a conta, você escolhe o que acontece com o seu conteúdo. Não dá para desfazer.</p>
+                    <button type="button" className="btn-secondary" onClick={() => setDeleteOpen(true)}>
+                      Excluir conta…
+                    </button>
+                  </fieldset>
                 </>
               )}
             </>
@@ -207,6 +217,14 @@ export default function ProfilePage({ token, onBack, onProfileUpdated }) {
           </button>
         </div>
       </div>
+
+      {deleteOpen && (
+        <DeleteAccountDialog
+          token={token}
+          onClose={() => setDeleteOpen(false)}
+          onDeleted={onAccountDeleted}
+        />
+      )}
     </section>
   )
 }

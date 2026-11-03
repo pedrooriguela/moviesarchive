@@ -81,12 +81,46 @@ public class UserRepository : IUserRepository
 
     public async Task<bool> Delete(Guid id)
     {
-        var user = GetByIdAsync(id);
+        var user = await GetByIdAsync(id);
         if (user == null)
             return false;
 
+        // Listas, avaliações, respostas, favoritos e seguidores saem junto com o usuário:
+        // as chaves estrangeiras do banco (schema.sql) são ON DELETE CASCADE
         _dbContext.Remove(user);
         await _dbContext.SaveChangesAsync();
+        return true;
+    }
+
+    public async Task<bool> AnonymizeAsync(Guid id, string unusablePasswordHash)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync();
+
+        // O que só interessa à própria pessoa é apagado.
+        // Avaliações, respostas e listas públicas continuam.
+        await _dbContext.Lists
+            .Where(list => list.UserId == id && !list.IsPublic)
+            .ExecuteDeleteAsync();
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM \"UserFavorites\" WHERE \"UserId\" = {id}");
+        await _dbContext.Database.ExecuteSqlInterpolatedAsync(
+            $"DELETE FROM \"UserFollowers\" WHERE \"FollowerId\" = {id} OR \"FollowingId\" = {id}");
+
+        // O e-mail precisa continuar único, por isso carrega o id
+        user.Name = ReservedUserNames.Removed;
+        user.Email = $"removido-{id:N}@removido.invalid";
+        user.Password = unusablePasswordHash;
+        user.PhotoData = null;
+        user.PhotoContentType = null;
+        user.PasswordResetToken = null;
+        user.PasswordResetExpiresAt = null;
+
+        await _dbContext.SaveChangesAsync();
+        await transaction.CommitAsync();
         return true;
     }
 

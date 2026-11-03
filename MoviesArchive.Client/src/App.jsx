@@ -34,6 +34,7 @@ function App() {
   const [signUpHint, setSignUpHint] = useState('') // título que o visitante quis abrir
   const [resetToken] = useState(initialRoute.resetToken)
   const [notice, setNotice] = useState('')
+  const [landingNotice, setLandingNotice] = useState('') // aviso na vitrine, ex.: conta excluída
   const [profile, setProfile] = useState(null)
   const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
@@ -54,11 +55,13 @@ function App() {
 
   function openLogin(message = '') {
     setNotice(message)
+    setLandingNotice('')
     setDialog('login')
   }
 
   function openSignUp(hint = '') {
     setSignUpHint(hint)
+    setLandingNotice('')
     setDialog('signup')
   }
 
@@ -93,6 +96,11 @@ function App() {
     setAuthenticatedView('home')
     setDialog(null)
     setView('landing')
+  }
+
+  function handleAccountDeleted() {
+    handleLogout()
+    setLandingNotice('Sua conta foi excluída.')
   }
 
   function goHome() {
@@ -161,6 +169,7 @@ function App() {
                     token={token}
                     onBack={() => setAuthenticatedView('home')}
                     onProfileUpdated={setProfile}
+                    onAccountDeleted={handleAccountDeleted}
                 />
             ) : authenticatedView === 'movie' ? (
                 <MoviePage
@@ -192,7 +201,7 @@ function App() {
                 }}
             />
         ) : (
-            <LandingPage onSignUp={openSignUp} onLogin={() => openLogin()} />
+            <LandingPage notice={landingNotice} onSignUp={openSignUp} onLogin={() => openLogin()} />
         )}
 
         {!user && dialog && (

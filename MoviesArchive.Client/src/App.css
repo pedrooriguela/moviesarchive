@@ -1559,3 +1559,71 @@ form {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* ===== Excluir conta ===== */
+.danger-zone {
+  min-width: 0;
+  margin: 20px 0 0;
+  padding: 12px;
+  border: 2px groove #ffffff;
+}
+
+.danger-zone legend {
+  padding: 0 6px;
+  font-weight: 700;
+  color: var(--error);
+}
+
+.danger-zone p {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+}
+
+.btn-danger:not(:disabled) {
+  background: var(--error);
+  color: #ffffff;
+}
+
+.choice-group {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.choice-group legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: start;
+  padding: 8px;
+  background: #ffffff;
+  box-shadow: var(--sunken);
+  cursor: pointer;
+}
+
+.choice input {
+  grid-row: span 2;
+  width: auto;
+  margin: 3px 0 0;
+}
+
+.choice-title {
+  font-weight: 700;
+}
+
+.choice-text {
+  font-size: 0.85rem;
+}

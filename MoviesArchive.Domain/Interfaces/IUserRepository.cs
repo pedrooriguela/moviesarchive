@@ -10,6 +10,7 @@ public interface IUserRepository
     Task<bool> UpdateProfilePhotoAsync(Guid id, byte[] photoData, string contentType);
     Task<bool> RemoveProfilePhotoAsync(Guid id);
     Task<bool> Delete(Guid id);
+    Task<bool> AnonymizeAsync(Guid id, string unusablePasswordHash);
     Task<User?> GetByIdAsync(Guid id);
     Task<User?> GetByUsernameAsync(string username);
     Task<User?> GetByEmailAsync(string email);
