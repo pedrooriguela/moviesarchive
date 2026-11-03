@@ -128,7 +128,7 @@ CREATE TABLE "Reviews" (
     "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "UserId" uuid NOT NULL,
     "MovieId" uuid NOT NULL,
-    "Rating" integer NOT NULL,
+    "Rating" numeric(2,1) NOT NULL,
     "Comment" text,
     "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PK_Reviews" PRIMARY KEY ("Id"),
@@ -136,7 +136,8 @@ CREATE TABLE "Reviews" (
         FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_Reviews_Users_UserId"
         FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
-    CONSTRAINT "CK_Reviews_Rating" CHECK ("Rating" BETWEEN 1 AND 5)
+    -- De 0,5 a 5 estrelas, em passos de meia estrela
+    CONSTRAINT "CK_Reviews_Rating" CHECK ("Rating" BETWEEN 0.5 AND 5 AND mod("Rating" * 2, 1) = 0)
 );
 
 CREATE INDEX "IX_Reviews_MovieId" ON "Reviews" ("MovieId");
@@ -160,5 +161,21 @@ CREATE TABLE "Responses" (
 
 CREATE INDEX "IX_Responses_ReviewId" ON "Responses" ("ReviewId");
 CREATE INDEX "IX_Responses_UserId" ON "Responses" ("UserId");
+
+-- ============================================================
+-- 10. WATCHLIST (Relacionamento N:N Usuário -> Filme)
+-- ============================================================
+CREATE TABLE "Watchlist" (
+    "UserId" uuid NOT NULL,
+    "MovieId" uuid NOT NULL,
+    "AddedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_Watchlist" PRIMARY KEY ("UserId", "MovieId"),
+    CONSTRAINT "FK_Watchlist_Users_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_Watchlist_Movies_MovieId"
+        FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX "IX_Watchlist_MovieId" ON "Watchlist" ("MovieId");
 
 COMMIT;

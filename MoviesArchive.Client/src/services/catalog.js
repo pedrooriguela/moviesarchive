@@ -3,7 +3,7 @@ import { mockGetHome, mockGetMovie, mockSearchCatalog } from '../mocks/movies.js
 
 // VITE_USE_MOCKS=false usa a API de verdade. Enquanto o banco não tiver as
 // alterações do catálogo (schema_alteracoes_catalogo.sql), deixe como true.
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
+export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS !== 'false'
 
 function buildQuery(params) {
   const search = new URLSearchParams()

@@ -1,15 +1,26 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import MovieArt from '../components/MovieArt.jsx'
 import Stars from '../components/Stars.jsx'
+import ReviewPanel from '../components/ReviewPanel.jsx'
+import ReviewsSection from '../components/ReviewsSection.jsx'
+import StatusBar from '../components/StatusBar.jsx'
 import { getMovie } from '../services/catalog.js'
+import { getMovieReviews, getMyMovieState } from '../services/reviews.js'
+
+const REVIEWS_PAGE_SIZE = 10
 
 function valueOrDash(value) {
   return value ? value : 'Não informado'
 }
 
-export default function MoviePage({ movieId, token, onBack }) {
+export default function MoviePage({ movieId, token, user, backLabel, onBack }) {
   const [state, setState] = useState({ status: 'loading', movie: null, error: '' })
   const [reloadKey, setReloadKey] = useState(0)
+  const [mine, setMine] = useState({ status: 'loading', data: null, error: '' })
+  const [mineKey, setMineKey] = useState(0)
+  const [reviews, setReviews] = useState({ status: 'loading', data: null, error: '' })
+  const [reviewsKey, setReviewsKey] = useState(0)
+  const [loadingMore, setLoadingMore] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -25,7 +36,109 @@ export default function MoviePage({ movieId, token, onBack }) {
     }
   }, [movieId, token, reloadKey])
 
+  // Watchlist e avaliação do usuário logado
+  useEffect(() => {
+    let active = true
+    getMyMovieState(movieId, token)
+      .then((data) => {
+        if (active) setMine({ status: 'ready', data, error: '' })
+      })
+      .catch((requestError) => {
+        if (active) setMine({ status: 'error', data: null, error: requestError.message })
+      })
+    return () => {
+      active = false
+    }
+  }, [movieId, token, mineKey])
+
+  // Primeira página das avaliações; recarrega depois que o usuário publica ou exclui a dele
+  useEffect(() => {
+    let active = true
+    getMovieReviews(movieId, { page: 1, pageSize: REVIEWS_PAGE_SIZE }, token)
+      .then((data) => {
+        if (active) setReviews({ status: 'ready', data, error: '' })
+      })
+      .catch((requestError) => {
+        if (active) setReviews({ status: 'error', data: null, error: requestError.message })
+      })
+    return () => {
+      active = false
+    }
+  }, [movieId, token, reviewsKey])
+
+  const refreshReviews = useCallback(() => {
+    setReviews((previous) => ({ ...previous, status: 'loading', error: '' }))
+    setReviewsKey((key) => key + 1)
+  }, [])
+
+  async function loadMoreReviews() {
+    const current = reviews.data
+    setLoadingMore(true)
+    try {
+      const next = await getMovieReviews(
+        movieId,
+        { page: current.page + 1, pageSize: REVIEWS_PAGE_SIZE },
+        token,
+      )
+      const known = new Set(current.items.map((review) => review.id))
+      setReviews({
+        status: 'ready',
+        error: '',
+        data: { ...next, items: [...current.items, ...next.items.filter((review) => !known.has(review.id))] },
+      })
+    } catch (requestError) {
+      setReviews((previous) => ({ ...previous, status: 'error', error: requestError.message }))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   const { status, movie } = state
+
+  function renderPanel() {
+    if (mine.status === 'loading') {
+      return (
+        <aside className="review-panel" aria-busy="true">
+          <h2 className="review-panel-title">Seu registro</h2>
+          <p role="status" className="field-hint">
+            Carregando...
+          </p>
+        </aside>
+      )
+    }
+
+    if (mine.status === 'error') {
+      return (
+        <aside className="review-panel">
+          <h2 className="review-panel-title">Seu registro</h2>
+          <div className="alert alert-error" role="alert">
+            {mine.error}
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={() => {
+              setMine({ status: 'loading', data: null, error: '' })
+              setMineKey((key) => key + 1)
+            }}
+          >
+            Tentar novamente
+          </button>
+        </aside>
+      )
+    }
+
+    return (
+      <ReviewPanel
+        key={movieId}
+        movieId={movieId}
+        token={token}
+        state={mine.data}
+        onStateChange={(data) => setMine({ status: 'ready', data, error: '' })}
+        onReviewChanged={refreshReviews}
+      />
+    )
+  }
 
   function renderBody() {
     if (status === 'loading') {
@@ -63,6 +176,8 @@ export default function MoviePage({ movieId, token, onBack }) {
       )
     }
 
+    const facts = [movie.releaseYear, movie.director].filter(Boolean).join(', ')
+
     return (
       <>
         <div className="movie-backdrop">
@@ -81,7 +196,17 @@ export default function MoviePage({ movieId, token, onBack }) {
           </div>
 
           <div className="movie-info">
-            {movie.rating != null && <Stars value={movie.rating} votes={movie.votes} />}
+            <div className="movie-heading">
+              <h2 className="movie-title">{movie.title}</h2>
+              {facts && <p className="movie-facts">{facts}</p>}
+            </div>
+
+            {movie.rating != null && (
+              <p className="movie-catalog-rating">
+                <span>Nota do acervo</span>
+                <Stars value={movie.rating} />
+              </p>
+            )}
 
             <dl className="ficha">
               <div className="ficha-row">
@@ -102,27 +227,52 @@ export default function MoviePage({ movieId, token, onBack }) {
               </div>
             </dl>
 
-            <h2 className="movie-section-title">Sinopse</h2>
-            <p className="movie-synopsis">{movie.synopsis}</p>
+            <div>
+              <h2 className="movie-section-title">Sinopse</h2>
+              <p className="movie-synopsis">{movie.synopsis || 'Sem sinopse cadastrada.'}</p>
+            </div>
           </div>
+
+          {renderPanel()}
+        </div>
+
+        <div className="window-body">
+          <ReviewsSection
+            data={reviews.data}
+            status={reviews.status}
+            error={reviews.error}
+            userId={user?.id}
+            loadingMore={loadingMore}
+            onLoadMore={loadMoreReviews}
+            onRetry={refreshReviews}
+          />
         </div>
       </>
     )
   }
 
+  const reviewCount = reviews.data?.totalCount
   return (
     <section className="window home-window" aria-labelledby="ficha-titulo">
       <div className="window-title">
-        <h1 id="ficha-titulo">{movie ? movie.title : 'Ficha do filme'}</h1>
+        <h1 id="ficha-titulo">Ficha do filme</h1>
       </div>
 
       <nav className="menubar" aria-label="Navegação">
         <button type="button" onClick={onBack}>
-          ← Voltar ao início
+          ← {backLabel ?? 'Voltar ao início'}
         </button>
       </nav>
 
       {renderBody()}
+
+      <StatusBar
+        items={[
+          reviewCount != null && `${reviewCount} ${reviewCount === 1 ? 'avaliação' : 'avaliações'}`,
+          mine.data && (mine.data.inWatchlist ? 'Na sua watchlist' : 'Fora da sua watchlist'),
+          mine.data?.review && 'Você já avaliou',
+        ]}
+      />
     </section>
   )
 }

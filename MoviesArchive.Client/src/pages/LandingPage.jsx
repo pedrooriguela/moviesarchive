@@ -12,11 +12,11 @@ const VITRINE = [
   { id: 'vitrine-6', title: 'Acossado', releaseYear: 1960, director: 'Jean-Luc Godard', language: 'Francês', rating: null, votes: 0 },
 ]
 
-// Sequência real de uso: cadastro, acervo e listas
+// Sequência real de uso: cadastro, avaliações e watchlist/listas
 const STEPS = [
   { title: 'Crie sua conta', text: 'Escolha um nome de usuário, seu e-mail e uma senha.' },
-  { title: 'Monte seu acervo', text: 'Busque por título, diretor ou gênero e abra a ficha de cada filme.' },
-  { title: 'Organize suas listas', text: 'Crie listas e escolha quais ficam públicas e quais ficam privadas.' },
+  { title: 'Avalie o que viu', text: 'Dê de meia a cinco estrelas e deixe um comentário na ficha do filme.' },
+  { title: 'Guarde o que falta ver', text: 'Mande filmes para a watchlist e organize listas públicas ou privadas.' },
 ]
 
 export default function LandingPage({ onSignUp, onLogin }) {
@@ -68,7 +68,7 @@ export default function LandingPage({ onSignUp, onLogin }) {
         </ol>
       </section>
 
-      <p className="landing-soon">Em breve: avaliações e perfis de outros espectadores.</p>
+      <p className="landing-soon">Em breve: perfis de outros espectadores.</p>
     </div>
   )
 }

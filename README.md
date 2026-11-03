@@ -62,7 +62,17 @@ dotnet user-secrets list
 
 A saída deve listar as 10 chaves acima (`PostgresSettings`, `JwtSettings` e `SmtpSettings`).
 
-### 2.2. Iniciar a API
+### 2.2. Atualizar o banco para avaliações e watchlist (uma vez só)
+
+As avaliações com meia estrela e a watchlist precisam de uma alteração no banco. **Uma pessoa do grupo** roda o script abaixo uma única vez no `t3_grupo_6` (pelo `psql` ou DBeaver), antes de subir a API nova:
+
+```bash
+psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f database/2026-11-03_avaliacoes_e_watchlist.sql
+```
+
+O script muda `Reviews.Rating` de inteiro (1 a 5) para `numeric(2,1)` (0,5 a 5, em passos de 0,5) e cria a tabela `Watchlist`. As notas já gravadas continuam válidas, e rodar o script de novo não quebra nada.
+
+### 2.3. Iniciar a API
 
 Ainda na pasta `MoviesArchive.Api`, inicie a aplicação:
 
@@ -138,7 +148,7 @@ Reinicie o `npm run dev` sempre que alterar o `.env`.
 
 ### 3.4. Iniciar o front-end
 
-Com a API já rodando (passo 2.2), em **outro terminal**:
+Com a API já rodando (passo 2.3), em **outro terminal**:
 
 ```bash
 cd MoviesArchive.Client
@@ -156,5 +166,5 @@ Acesse `http://localhost:5173` no navegador.
 | `npm: command not found` | Node.js não instalado ou nvm não carregado no terminal | Refaça o passo 3.1 e abra um novo terminal |
 | `vite: not found` | Dependências não instaladas | Rode `npm install` dentro de `MoviesArchive.Client` |
 | Página padrão do Vite em vez da tela de login | Navegador com cache ou outro servidor na porta 5173 | Recarregue com `Ctrl + Shift + R` e confira se só há um `npm run dev` rodando |
-| "Não foi possível conectar à API" | API parada ou em outra porta | Inicie a API (passo 2.2) ou ajuste `VITE_API_URL` |
+| "Não foi possível conectar à API" | API parada ou em outra porta | Inicie a API (passo 2.3) ou ajuste `VITE_API_URL` |
 | Erro de CORS no console | Front-end rodando fora da porta 5173 | Rode o front-end em `http://localhost:5173` |

@@ -82,7 +82,8 @@ public class MovieCatalogService : IMovieCatalogService
         };
     }
 
-    private static MovieCardDto ToCard(Movie movie) => new()
+    // Também usado pela watchlist
+    internal static MovieCardDto ToCard(Movie movie) => new()
     {
         Id = movie.Id,
         Title = movie.Title,

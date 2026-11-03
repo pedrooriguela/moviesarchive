@@ -1,13 +1,20 @@
-/* Tema "Movies Archive, 1997": cores e bordas de Windows 95 */
+/* Tema "Movies Archive, 1997": cores e bordas de Windows 95, letreiro de cinema */
 :root {
   /* Paleta */
   --bg: #d8d3c0;            /* bege de monitor (fundo da página) */
+  --bg-dot: #c9c3ad;        /* trama do papel de parede */
   --panel: #c0c0c0;         /* cinza de janela */
+  --panel-light: #dfdfdf;
   --accent: #000080;        /* azul de barra de título */
+  --accent-2: #1084d0;      /* fim do degradê da barra de título (Windows 98) */
   --link: #0000ee;          /* azul de hyperlink */
   --amber: #f2b630;         /* âmbar de letreiro */
+  --amber-deep: #b8800f;
+  --film: #000000;          /* preto de película */
+  --paper: #ffffff;
   --text: #1a1a1a;
   --text-h: #000000;
+  --text-soft: #4a4a4a;
   --card-bg: #c0c0c0;
   --border: #808080;
   --accent-border: #000080;
@@ -16,18 +23,22 @@
   --success: #006400;
   --success-bg: #ffffff;
 
+  /* Barra de título ativa */
+  --title-bar: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+
   /* Bordas em bisel */
   --raised: inset 1px 1px #ffffff, inset -1px -1px #000000,
     inset 2px 2px #dfdfdf, inset -2px -2px #808080;
   --sunken: inset 1px 1px #808080, inset -1px -1px #ffffff,
     inset 2px 2px #000000, inset -2px -2px #dfdfdf;
+  --shallow: inset 1px 1px #808080, inset -1px -1px #ffffff;
   --shadow: var(--raised);
 
   /* Tipografia: títulos em pixel de terminal, corpo em Verdana (fonte da web da época) */
   --font-display: 'VT323', 'Courier New', monospace;
   --font-body: Verdana, Tahoma, Geneva, sans-serif;
 
-  font: 15px/1.45 var(--font-body);
+  font: 15px/1.5 var(--font-body);
   color-scheme: light;
   color: var(--text);
   background: var(--bg);
@@ -42,4 +53,22 @@
 
 body {
   margin: 0;
+  /* Papel de parede: trama fina, como os padrões da área de trabalho */
+  background-color: var(--bg);
+  background-image: radial-gradient(var(--bg-dot) 1px, transparent 1.2px);
+  background-size: 4px 4px;
+}
+
+::selection {
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

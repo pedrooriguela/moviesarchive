@@ -8,6 +8,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import ListsPage from './pages/ListsPage.jsx'
 import MoviePage from './pages/MoviePage.jsx'
+import WatchlistPage from './pages/WatchlistPage.jsx'
 import Dialog from './components/Dialog.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc } from './services/api.js'
@@ -35,8 +36,9 @@ function App() {
   const [resetToken] = useState(initialRoute.resetToken)
   const [notice, setNotice] = useState('')
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
+  const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
 
   const user = getUserFromToken(token)
@@ -100,9 +102,16 @@ function App() {
     setHomeVisit((count) => count + 1)
   }
 
-  function openMovie(movieId) {
+  function openMovie(movieId, origin = 'home') {
     setSelectedMovieId(movieId)
+    setMovieOrigin(origin)
     setAuthenticatedView('movie')
+    window.scrollTo(0, 0)
+  }
+
+  function leaveMovie() {
+    if (movieOrigin === 'watchlist') setAuthenticatedView('watchlist')
+    else goHome()
   }
 
   return (
@@ -164,9 +173,18 @@ function App() {
                 />
             ) : authenticatedView === 'movie' ? (
                 <MoviePage
+                    key={selectedMovieId}
                     movieId={selectedMovieId}
                     token={token}
+                    user={activeUser}
+                    backLabel={movieOrigin === 'watchlist' ? 'Voltar à watchlist' : 'Voltar ao início'}
+                    onBack={leaveMovie}
+                />
+            ) : authenticatedView === 'watchlist' ? (
+                <WatchlistPage
+                    token={token}
                     onBack={goHome}
+                    onOpenMovie={(movieId) => openMovie(movieId, 'watchlist')}
                 />
             ) : authenticatedView === 'lists' ? (
                 <ListsPage
@@ -180,6 +198,7 @@ function App() {
                     user={activeUser}
                     onOpenMovie={openMovie}
                     onOpenLists={() => setAuthenticatedView('lists')}
+                    onOpenWatchlist={() => setAuthenticatedView('watchlist')}
                     onOpenProfile={() => setAuthenticatedView('profile')}
                     onLogout={handleLogout}
                 />
