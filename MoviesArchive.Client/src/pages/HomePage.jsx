@@ -3,6 +3,7 @@ import Hero from '../components/Hero.jsx'
 import MovieCard from '../components/MovieCard.jsx'
 import Shelf from '../components/Shelf.jsx'
 import StatusBar from '../components/StatusBar.jsx'
+import { GENRES } from '../constants/genres.js'
 import { getHome, searchCatalog } from '../services/catalog.js'
 
 const PAGE_SIZE = 12
@@ -11,15 +12,16 @@ const PAGE_SIZE = 12
 const LANGUAGE_OPTIONS = ['Alemão', 'Coreano', 'Francês', 'Inglês', 'Italiano', 'Japonês', 'Português']
 const SORT_OPTIONS = [
   { value: 'default', label: 'Título (A a Z)' },
+  { value: 'rating-desc', label: 'Mais bem avaliados' },
+  { value: 'rating-asc', label: 'Menos bem avaliados' },
   { value: 'year-desc', label: 'Mais recentes' },
   { value: 'year-asc', label: 'Mais antigos' },
 ]
-const DEFAULT_FILTERS = { language: '', yearFrom: '', yearTo: '', sort: 'default' }
+const DEFAULT_FORM = { query: '', language: '', yearFrom: '', yearTo: '', genres: [], sort: 'default' }
 
 export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, onOpenProfile, onLogout, onOpenMovie }) {
-  const [draft, setDraft] = useState('') // o que está digitado
-  const [query, setQuery] = useState('') // o que foi de fato buscado
-  const [filters, setFilters] = useState(DEFAULT_FILTERS)
+  const [form, setForm] = useState(DEFAULT_FORM) // o que está nos campos
+  const [applied, setApplied] = useState(null) // o que foi buscado; null = ainda não buscou
   const [page, setPage] = useState(1)
   const [reloadKey, setReloadKey] = useState(0)
   const [result, setResult] = useState({ status: 'loading', data: null, error: '' })
@@ -27,21 +29,10 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
   const [homeKey, setHomeKey] = useState(0)
 
   const yearsInvalid = Boolean(
-    filters.yearFrom && filters.yearTo && Number(filters.yearFrom) > Number(filters.yearTo),
+    form.yearFrom && form.yearTo && Number(form.yearFrom) > Number(form.yearTo),
   )
-  const hasCriteria = Boolean(
-    query || filters.language || filters.yearFrom || filters.yearTo,
-  )
-  const browsing = !hasCriteria
-
-  // Busca por texto com atraso, para não buscar a cada tecla
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setQuery(draft.trim())
-      setPage(1)
-    }, 300)
-    return () => clearTimeout(timer)
-  }, [draft])
+  const browsing = applied === null
+  const canClear = !browsing || JSON.stringify(form) !== JSON.stringify(DEFAULT_FORM)
 
   // Página inicial: destaque e prateleiras
   useEffect(() => {
@@ -58,26 +49,23 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
     }
   }, [homeKey, token])
 
-  // Resultados: só busca quando há algum critério
+  // Resultados: só busca depois que a pessoa aperta "Buscar" (ou muda de página)
   useEffect(() => {
-    if (!hasCriteria) return
-    if (yearsInvalid) {
-      setResult({ status: 'invalid', data: null, error: '' })
-      return
-    }
+    if (applied === null) return
 
     let active = true
     setResult((previous) => ({ ...previous, status: 'loading', error: '' }))
 
     searchCatalog(
       {
-      query,
-      language: filters.language,
-      yearFrom: filters.yearFrom ? Number(filters.yearFrom) : undefined,
-      yearTo: filters.yearTo ? Number(filters.yearTo) : undefined,
-      sort: filters.sort,
-      page,
-      pageSize: PAGE_SIZE,
+        query: applied.query,
+        language: applied.language,
+        yearFrom: applied.yearFrom ? Number(applied.yearFrom) : undefined,
+        yearTo: applied.yearTo ? Number(applied.yearTo) : undefined,
+        genres: applied.genres,
+        sort: applied.sort,
+        page,
+        pageSize: PAGE_SIZE,
       },
       token,
     )
@@ -91,22 +79,41 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
     return () => {
       active = false
     }
-  }, [query, filters, page, reloadKey, yearsInvalid, hasCriteria, token])
+  }, [applied, page, reloadKey, token])
 
-  function updateFilter(patch) {
-    setFilters((current) => ({ ...current, ...patch }))
+  function updateForm(patch) {
+    setForm((current) => ({ ...current, ...patch }))
+  }
+
+  // Nenhum gênero marcado = todos. Marcar os nove volta para "Todos", que dá no mesmo.
+  function toggleGenre(value) {
+    setForm((current) => {
+      const genres = current.genres.includes(value)
+        ? current.genres.filter((genre) => genre !== value)
+        : [...current.genres, value]
+      return { ...current, genres: genres.length === GENRES.length ? [] : genres }
+    })
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    if (yearsInvalid) return
+    setApplied({ ...form, query: form.query.trim() })
     setPage(1)
   }
 
   function clearAll() {
-    setDraft('')
-    setQuery('')
-    setFilters(DEFAULT_FILTERS)
+    setForm(DEFAULT_FORM)
+    setApplied(null)
     setPage(1)
   }
 
+  // Atalho do destaque: já busca pelo título
   function openHomeTitle(title) {
-    setDraft(title)
+    const next = { ...DEFAULT_FORM, query: title }
+    setForm(next)
+    setApplied(next)
+    setPage(1)
   }
 
   function renderShelves() {
@@ -171,14 +178,6 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
           <button type="button" className="btn-secondary" onClick={() => setReloadKey((key) => key + 1)}>
             Tentar novamente
           </button>
-        </div>
-      )
-    }
-
-    if (result.status === 'invalid') {
-      return (
-        <div className="alert alert-error" role="alert">
-          O ano inicial não pode ser maior que o ano final.
         </div>
       )
     }
@@ -254,91 +253,122 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
       <div className="window-body">
         <p className="welcome">Olá, {user.name}. Procure um título no acervo.</p>
 
-        <form role="search" onSubmit={(event) => event.preventDefault()}>
+        <form role="search" onSubmit={handleSubmit} noValidate>
           <div className="field">
-            <label htmlFor="busca-texto">Título, diretor, elenco ou gênero</label>
+            <label htmlFor="busca-texto">Título, diretor ou gênero</label>
             <input
               id="busca-texto"
               type="search"
               placeholder="Ex.: Metropolis, Kurosawa, terror"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
+              value={form.query}
+              onChange={(event) => updateForm({ query: event.target.value })}
               autoFocus
             />
           </div>
+
+          <fieldset className="filter-bar">
+            <legend>Filtros</legend>
+
+            <div className="field filter-field">
+              <label htmlFor="filtro-idioma">Idioma</label>
+              <select
+                id="filtro-idioma"
+                value={form.language}
+                onChange={(event) => updateForm({ language: event.target.value })}
+              >
+                <option value="">Todos</option>
+                {LANGUAGE_OPTIONS.map((language) => (
+                  <option key={language} value={language}>
+                    {language}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="field filter-year">
+              <label htmlFor="filtro-ano-inicial">Ano inicial</label>
+              <input
+                id="filtro-ano-inicial"
+                type="number"
+                inputMode="numeric"
+                min="1880"
+                max="2100"
+                value={form.yearFrom}
+                onChange={(event) => updateForm({ yearFrom: event.target.value })}
+                aria-invalid={yearsInvalid}
+              />
+            </div>
+
+            <div className="field filter-year">
+              <label htmlFor="filtro-ano-final">Ano final</label>
+              <input
+                id="filtro-ano-final"
+                type="number"
+                inputMode="numeric"
+                min="1880"
+                max="2100"
+                value={form.yearTo}
+                onChange={(event) => updateForm({ yearTo: event.target.value })}
+                aria-invalid={yearsInvalid}
+              />
+            </div>
+
+            <div className="field filter-field">
+              <label htmlFor="filtro-ordem">Ordenar por</label>
+              <select
+                id="filtro-ordem"
+                value={form.sort}
+                onChange={(event) => updateForm({ sort: event.target.value })}
+              >
+                {SORT_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <fieldset className="genre-filter">
+              <legend>Gêneros</legend>
+              <div className="genre-options">
+                <label className="genre-option genre-option-all">
+                  <input
+                    type="checkbox"
+                    checked={form.genres.length === 0}
+                    onChange={() => updateForm({ genres: [] })}
+                  />
+                  Todos
+                </label>
+                {GENRES.map((genre) => (
+                  <label key={genre.value} className="genre-option">
+                    <input
+                      type="checkbox"
+                      checked={form.genres.includes(genre.value)}
+                      onChange={() => toggleGenre(genre.value)}
+                    />
+                    {genre.label}
+                  </label>
+                ))}
+              </div>
+              <p className="genre-hint">Marque um ou mais para ver os filmes que têm pelo menos um deles.</p>
+            </fieldset>
+
+            {yearsInvalid && (
+              <p className="field-error filter-error" role="alert">
+                O ano inicial não pode ser maior que o ano final.
+              </p>
+            )}
+
+            <div className="filter-actions">
+              <button type="button" className="btn-secondary" onClick={clearAll} disabled={!canClear}>
+                Limpar filtros
+              </button>
+              <button type="submit" className="btn-primary" disabled={yearsInvalid}>
+                Buscar
+              </button>
+            </div>
+          </fieldset>
         </form>
-
-        <fieldset className="filter-bar">
-          <legend>Filtros</legend>
-
-          <div className="field filter-field">
-            <label htmlFor="filtro-idioma">Idioma</label>
-            <select
-              id="filtro-idioma"
-              value={filters.language}
-              onChange={(event) => updateFilter({ language: event.target.value })}
-            >
-              <option value="">Todos</option>
-              {LANGUAGE_OPTIONS.map((language) => (
-                <option key={language} value={language}>
-                  {language}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field filter-year">
-            <label htmlFor="filtro-ano-inicial">Ano inicial</label>
-            <input
-              id="filtro-ano-inicial"
-              type="number"
-              inputMode="numeric"
-              min="1880"
-              max="2100"
-              value={filters.yearFrom}
-              onChange={(event) => updateFilter({ yearFrom: event.target.value })}
-              aria-invalid={yearsInvalid}
-            />
-          </div>
-
-          <div className="field filter-year">
-            <label htmlFor="filtro-ano-final">Ano final</label>
-            <input
-              id="filtro-ano-final"
-              type="number"
-              inputMode="numeric"
-              min="1880"
-              max="2100"
-              value={filters.yearTo}
-              onChange={(event) => updateFilter({ yearTo: event.target.value })}
-              aria-invalid={yearsInvalid}
-            />
-          </div>
-
-          <div className="field filter-field">
-            <label htmlFor="filtro-ordem">Ordenar por</label>
-            <select
-              id="filtro-ordem"
-              value={filters.sort}
-              onChange={(event) => updateFilter({ sort: event.target.value })}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            type="button"
-            className="btn-secondary filter-clear"
-            onClick={clearAll}
-            disabled={!hasCriteria}
-          >
-            Limpar filtros
-          </button>
-        </fieldset>
 
         {browsing ? (
           renderShelves()

@@ -67,14 +67,17 @@ public class MovieRepository : IMovieRepository
             query = query.Where(movie => movie.ReleaseDate <= end);
         }
 
+        // Com gêneros marcados, entra o filme que tiver pelo menos um deles
+        // (vira o operador de sobreposição de arrays do PostgreSQL, &&)
+        if (filter.Genres.Count > 0)
+        {
+            var genres = filter.Genres.ToList();
+            query = query.Where(movie => movie.Genres.Any(genre => genres.Contains(genre)));
+        }
+
         var totalCount = await query.CountAsync();
 
-        var ordered = filter.Sort switch
-        {
-            "year-desc" => query.OrderByDescending(movie => movie.ReleaseDate).ThenBy(movie => movie.Title).ThenBy(movie => movie.Id),
-            "year-asc" => query.OrderBy(movie => movie.ReleaseDate).ThenBy(movie => movie.Title).ThenBy(movie => movie.Id),
-            _ => query.OrderBy(movie => movie.Title).ThenBy(movie => movie.Id),
-        };
+        var ordered = ApplySort(query, filter.Sort);
 
         var items = await ordered
             .Skip((filter.Page - 1) * filter.PageSize)
@@ -82,6 +85,42 @@ public class MovieRepository : IMovieRepository
             .ToListAsync();
 
         return (items, totalCount);
+    }
+
+    // Ordenação da busca. Pela avaliação, usa a média da tabela Reviews (a mesma exibida nos
+    // cartões) e deixa os filmes ainda sem avaliação por último, nos dois sentidos.
+    private IQueryable<Movie> ApplySort(IQueryable<Movie> query, string sort)
+    {
+        switch (sort)
+        {
+            case "year-desc":
+                return query.OrderByDescending(movie => movie.ReleaseDate).ThenBy(movie => movie.Title).ThenBy(movie => movie.Id);
+            case "year-asc":
+                return query.OrderBy(movie => movie.ReleaseDate).ThenBy(movie => movie.Title).ThenBy(movie => movie.Id);
+            case "rating-desc":
+            case "rating-asc":
+            {
+                var ranked = query.Select(movie => new
+                {
+                    Movie = movie,
+                    Average = _dbContext.Reviews
+                        .Where(review => review.MovieId == movie.Id)
+                        .Average(review => (decimal?)review.Rating),
+                });
+
+                var unratedLast = ranked.OrderBy(row => row.Average == null);
+                var byAverage = sort == "rating-desc"
+                    ? unratedLast.ThenByDescending(row => row.Average)
+                    : unratedLast.ThenBy(row => row.Average);
+
+                return byAverage
+                    .ThenBy(row => row.Movie.Title)
+                    .ThenBy(row => row.Movie.Id)
+                    .Select(row => row.Movie);
+            }
+            default:
+                return query.OrderBy(movie => movie.Title).ThenBy(movie => movie.Id);
+        }
     }
 
     public async Task<Movie?> GetByIdAsync(Guid movieId)

@@ -47,6 +47,7 @@ public class MovieController : Controller
         [FromQuery] string? language,
         [FromQuery] int? yearFrom,
         [FromQuery] int? yearTo,
+        [FromQuery] string[]? genres,
         [FromQuery] string? sort = "default",
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 12)
@@ -60,11 +61,23 @@ public class MovieController : Controller
         if (yearFrom > yearTo)
             return BadRequest(new { field = "yearFrom", message = "O ano inicial não pode ser maior que o ano final." });
 
+        // Gêneros chegam como códigos do enum Genre (ex.: genres=Acao&genres=Crime)
+        var genreCodes = (genres ?? Array.Empty<string>())
+            .Select(code => code.Trim())
+            .Where(code => code.Length > 0)
+            .Distinct()
+            .ToList();
+
+        var validGenres = Enum.GetNames<Genre>();
+        if (genreCodes.Any(code => !validGenres.Contains(code)))
+            return BadRequest(new { field = "genres", message = "Gênero inválido." });
+
         var filter = new MovieSearchFilter(
             Query: query?.Trim(),
             Language: language?.Trim(),
             YearFrom: yearFrom,
             YearTo: yearTo,
+            Genres: genreCodes,
             Sort: sort ?? "default",
             Page: Math.Max(1, page),
             PageSize: Math.Clamp(pageSize, 1, MaxResults));
