@@ -1,74 +1,15 @@
-// Avaliações e watchlist fictícias, em memória (somem ao recarregar a página).
+// Avaliações e watchlist em memória, para usar sem a API (somem ao recarregar a página).
+// Não há avaliações pré-cadastradas: a lista de cada filme começa vazia.
 // Os formatos seguem o back-end: ReviewResponseDto, MovieReviewsResponseDto e MovieUserStateDto.
 import { MOVIES } from './movies.js'
 import { getUserFromToken } from '../services/token.js'
 
-const VIEWERS = [
-  { id: 'v1', name: 'cinefila_rosa' },
-  { id: 'v2', name: 'marcos.vhs' },
-  { id: 'v3', name: 'lu_projecionista' },
-  { id: 'v4', name: 'otavio1972' },
-  { id: 'v5', name: 'beatriz.sessao' },
-  { id: 'v6', name: 'tiago_cineclube' },
-  { id: 'v7', name: 'helena.noir' },
-  { id: 'v8', name: 'rafa8mm' },
-]
-
-const COMMENTS = [
-  'Revi depois de anos e continua inteiro. A montagem ainda dita o ritmo de muita coisa feita depois.',
-  'O começo é lento, mas a última meia hora compensa cada minuto.',
-  'Vi numa sessão da cinemateca, com a sala lotada. Experiência que não dá para repetir em casa.',
-  'Não envelheceu tão bem quanto dizem. Vale pelo valor histórico.',
-  'Cada plano parece pensado para durar. Saí do filme olhando a rua de outro jeito.',
-  null,
-  'A trilha faz metade do trabalho. Fiquei com ela na cabeça a semana inteira.',
-  null,
-  'Assisti em fita, com chiado e tudo, e acho que combinou.',
-  'Bom, mas esperava mais depois de tanta gente recomendar.',
-]
-
-const DAY = 24 * 60 * 60 * 1000
+// Começa sem nenhuma avaliação: só aparecem as que o usuário logado publicar nesta sessão.
 const reviewsByMovie = new Map() // movieId -> ReviewResponseDto[]
 const watchlistByUser = new Map() // userId -> [{ movieId, addedAt }]
 
-function hashOf(text) {
-  let hash = 11
-  for (const char of text) hash = (hash * 31 + char.charCodeAt(0)) >>> 0
-  return hash
-}
-
-function roundToHalf(value) {
-  return Math.min(5, Math.max(0.5, Math.round(value * 2) / 2))
-}
-
-// Gera sempre as mesmas avaliações para o mesmo filme
-function seedReviews(movie) {
-  const seed = hashOf(movie.id)
-  const count = 3 + (seed % 5)
-  const base = movie.rating ?? 3.5
-  const now = Date.now()
-
-  return Array.from({ length: count }, (_, i) => {
-    const viewer = VIEWERS[(seed + i * 3) % VIEWERS.length]
-    const drift = (((seed >> (i + 1)) % 5) - 2) * 0.5
-    return {
-      id: `r-${movie.id}-${i}`,
-      movieId: movie.id,
-      userId: viewer.id,
-      userName: viewer.name,
-      userPhotoUrl: null,
-      rating: roundToHalf(base + drift),
-      comment: COMMENTS[(seed + i * 7) % COMMENTS.length],
-      createdAt: new Date(now - (i * 9 + (seed % 7) + 1) * DAY).toISOString(),
-    }
-  })
-}
-
 function reviewsOf(movieId) {
-  if (!reviewsByMovie.has(movieId)) {
-    const movie = MOVIES.find((m) => m.id === movieId)
-    reviewsByMovie.set(movieId, movie ? seedReviews(movie) : [])
-  }
+  if (!reviewsByMovie.has(movieId)) reviewsByMovie.set(movieId, [])
   return reviewsByMovie.get(movieId)
 }
 
