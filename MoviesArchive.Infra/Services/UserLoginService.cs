@@ -22,6 +22,9 @@ public class UserLoginService : IUserLoginService
 
     public async Task CreateAccountAsync(CreateUserRequestDto createUserRequestDto)
     {
+        if (ReservedUserNames.IsReserved(createUserRequestDto.Name))
+            throw new UsernameAlreadyInUseException();
+
         if (await _userRepository.GetByUsernameAsync(createUserRequestDto.Name) != null)
             throw new UsernameAlreadyInUseException();
 
