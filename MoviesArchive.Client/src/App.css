@@ -2482,3 +2482,9 @@ form {
     font-size: 1.2rem;
   }
 }
+.users-window { width: min(100%, 760px); margin-inline: auto; }
+.social-users { list-style: none; padding: 0; }
+.social-user { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #888; flex-wrap: wrap; }
+.social-user img, .social-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.social-avatar { display: grid; place-items: center; background: #ddd; color: #222; font-weight: bold; }
+.social-name { flex: 1; min-width: 100px; overflow-wrap: anywhere; }

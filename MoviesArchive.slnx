@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="tests\MoviesArchive.Follows.Tests\MoviesArchive.Follows.Tests.csproj" />
   <Project Path="MoviesArchive.Api\MoviesArchive.Api.csproj" />
   <Project Path="MoviesArchive.Domain\MoviesArchive.Domain.csproj" Id="a5eae27a-0dec-4d2d-9e1e-1dec71a7c59b" />
   <Project Path="MoviesArchive.Infra\MoviesArchive.Infra.csproj" Id="ee823ccd-6003-48b2-8935-1a3c85d9f9b2" />

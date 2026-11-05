@@ -16,6 +16,8 @@ public class MoviesArchiveDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<UserFollower> UserFollowers => Set<UserFollower>();
+
     public DbSet<Movie> Movies => Set<Movie>();
 
     public DbSet<Review> Reviews => Set<Review>();
@@ -30,6 +32,17 @@ public class MoviesArchiveDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<UserFollower>(entity =>
+        {
+            entity.ToTable("UserFollowers", table => table.HasCheckConstraint(
+                "CK_UserFollowers_NoSelfFollow", "\"FollowerId\" <> \"FollowingId\""));
+            entity.HasKey(f => new { f.FollowerId, f.FollowingId });
+            entity.HasOne<User>().WithMany().HasForeignKey(f => f.FollowerId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<User>().WithMany().HasForeignKey(f => f.FollowingId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(f => f.FollowingId);
+            entity.Property(f => f.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        });
 
         modelBuilder.Entity<Review>()
             .HasOne<User>()

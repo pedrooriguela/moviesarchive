@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import LandingPage from './pages/LandingPage.jsx'
 import HomePage from './pages/HomePage.jsx'
+import UsersPage from './pages/UsersPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
@@ -187,7 +188,9 @@ function App() {
                 onGoToForgotPassword={openForgotPassword}
             />
         ) : user ? (
-            authenticatedView === 'profile' ? (
+            authenticatedView === 'users' ? (
+                <UsersPage token={token} onBack={goHome} />
+            ) : authenticatedView === 'profile' ? (
                 <ProfilePage
                     token={token}
                     onBack={() => setAuthenticatedView('home')}
@@ -235,6 +238,7 @@ function App() {
                     onOpenLists={() => setAuthenticatedView('lists')}
                     onOpenWatchlist={() => setAuthenticatedView('watchlist')}
                     onOpenHistory={() => setAuthenticatedView('history')}
+                    onOpenUsers={() => setAuthenticatedView('users')}
                     onOpenProfile={() => setAuthenticatedView('profile')}
                     onLogout={handleLogout}
                 />
