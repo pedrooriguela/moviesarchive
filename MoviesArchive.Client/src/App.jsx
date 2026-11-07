@@ -11,6 +11,8 @@ import MoviePage from './pages/MoviePage.jsx'
 import WatchlistPage from './pages/WatchlistPage.jsx'
 import PlayerPage from './pages/PlayerPage.jsx'
 import HistoryPage from './pages/HistoryPage.jsx'
+import PlansPage from './pages/PlansPage.jsx'
+import SubscriptionPage from './pages/SubscriptionPage.jsx'
 import Dialog from './components/Dialog.jsx'
 import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc } from './services/api.js'
@@ -33,6 +35,9 @@ const DIALOG_TITLES = { login: 'Entrar', signup: 'Criar nova conta' }
 // Texto do "Voltar" da ficha, conforme a tela de onde o filme foi aberto
 const MOVIE_BACK_LABELS = { watchlist: 'Voltar à watchlist', history: 'Voltar ao histórico' }
 
+// Texto do "Voltar" dos planos, conforme a tela de onde a pessoa veio
+const PLANS_BACK_LABELS = { movie: 'Voltar à ficha', subscription: 'Voltar à minha assinatura' }
+
 function App() {
   const [token, setToken] = useState(() => loadToken())
   const [view, setView] = useState(initialRoute.view) // 'landing' | 'forgot' | 'reset'
@@ -42,11 +47,13 @@ function App() {
   const [notice, setNotice] = useState('')
   const [landingNotice, setLandingNotice] = useState('') // aviso na vitrine, ex.: conta excluída
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history' | 'plans' | 'subscription'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
   const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
   const [playingMovie, setPlayingMovie] = useState(null) // filme aberto no player
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
+  const [plansNotice, setPlansNotice] = useState('') // aviso no topo dos planos, ex.: vindo do play
+  const [plansReturn, setPlansReturn] = useState('home') // para onde o "Voltar" dos planos leva
 
   const user = getUserFromToken(token)
   const activeUser = { ...user, ...profile }
@@ -136,6 +143,25 @@ function App() {
     window.scrollTo(0, 0)
   }
 
+  // Planos: o "Voltar" retorna para a tela de onde a pessoa veio
+  function openPlans(from = 'home', message = '') {
+    setPlansReturn(from)
+    setPlansNotice(message)
+    setAuthenticatedView('plans')
+    window.scrollTo(0, 0)
+  }
+
+  function leavePlans() {
+    if (plansReturn === 'movie') setAuthenticatedView('movie')
+    else if (plansReturn === 'subscription') setAuthenticatedView('subscription')
+    else goHome()
+  }
+
+  function openSubscription() {
+    setAuthenticatedView('subscription')
+    window.scrollTo(0, 0)
+  }
+
   return (
       <main className="app">
         <header className="app-header">
@@ -203,6 +229,24 @@ function App() {
                     backLabel={MOVIE_BACK_LABELS[movieOrigin] ?? 'Voltar ao início'}
                     onBack={leaveMovie}
                     onPlay={openPlayer}
+                    onRequirePlan={(movie) => openPlans('movie', `Assine um plano para assistir a ${movie.title}.`)}
+                />
+            ) : authenticatedView === 'plans' ? (
+                <PlansPage
+                    token={token}
+                    notice={plansNotice}
+                    backLabel={PLANS_BACK_LABELS[plansReturn] ?? 'Voltar ao início'}
+                    onBack={leavePlans}
+                    onOpenSubscription={openSubscription}
+                    onOpenProfile={() => setAuthenticatedView('profile')}
+                />
+            ) : authenticatedView === 'subscription' ? (
+                <SubscriptionPage
+                    token={token}
+                    user={activeUser}
+                    onBack={goHome}
+                    onOpenPlans={() => openPlans('subscription')}
+                    onOpenProfile={() => setAuthenticatedView('profile')}
                 />
             ) : authenticatedView === 'player' && playingMovie ? (
                 <PlayerPage
@@ -235,6 +279,7 @@ function App() {
                     onOpenLists={() => setAuthenticatedView('lists')}
                     onOpenWatchlist={() => setAuthenticatedView('watchlist')}
                     onOpenHistory={() => setAuthenticatedView('history')}
+                    onOpenSubscription={openSubscription}
                     onOpenProfile={() => setAuthenticatedView('profile')}
                     onLogout={handleLogout}
                 />

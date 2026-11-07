@@ -19,7 +19,7 @@ const SORT_OPTIONS = [
 ]
 const DEFAULT_FORM = { query: '', language: '', yearFrom: '', yearTo: '', genres: [], sort: 'default' }
 
-export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, onOpenHistory, onOpenProfile, onLogout, onOpenMovie }) {
+export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, onOpenHistory, onOpenSubscription, onOpenProfile, onLogout, onOpenMovie }) {
   const [form, setForm] = useState(DEFAULT_FORM) // o que está nos campos
   const [applied, setApplied] = useState(null) // o que foi buscado; null = ainda não buscou
   const [page, setPage] = useState(1)
@@ -243,6 +243,7 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
         <button type="button" onClick={onOpenWatchlist}>Watchlist</button>
         <button type="button" onClick={onOpenLists}>Minhas listas</button>
         <button type="button" onClick={onOpenHistory}>Meu histórico</button>
+        <button type="button" onClick={onOpenSubscription}>Assinatura</button>
         <button type="button" onClick={onOpenProfile}>Meu perfil</button>
         <button type="button" onClick={onLogout}>Sair</button>
       </nav>

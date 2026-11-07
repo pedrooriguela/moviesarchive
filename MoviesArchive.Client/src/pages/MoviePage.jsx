@@ -14,7 +14,7 @@ function valueOrDash(value) {
   return value ? value : 'Não informado'
 }
 
-export default function MoviePage({ movieId, token, user, backLabel, onBack, onPlay }) {
+export default function MoviePage({ movieId, token, user, backLabel, onBack, onPlay, onRequirePlan }) {
   const [state, setState] = useState({ status: 'loading', movie: null, error: '' })
   const [reloadKey, setReloadKey] = useState(0)
   const [mine, setMine] = useState({ status: 'loading', data: null, error: '' })
@@ -106,8 +106,13 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
       await recordWatch(movie, token)
       onPlay(movie)
     } catch (requestError) {
-      setPlayError(`Não foi possível abrir o filme: ${requestError.message}`)
       setPlaying(false)
+      // Conta gratuita: em vez de um erro, a página de planos com o aviso
+      if (requestError.code === 'subscription-required' && onRequirePlan) {
+        onRequirePlan(movie)
+        return
+      }
+      setPlayError(`Não foi possível abrir o filme: ${requestError.message}`)
     }
   }
 

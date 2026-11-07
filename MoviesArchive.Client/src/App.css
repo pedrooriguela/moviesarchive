@@ -2482,3 +2482,380 @@ form {
     font-size: 1.2rem;
   }
 }
+
+/* Texto de apoio abaixo de um campo */
+.field-hint {
+  font-size: 0.8rem;
+}
+
+/* ===== Planos e assinatura ===== */
+.window-body-spaced {
+  padding-top: 16px;
+}
+
+.alert-info {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Aviso com um botão ao lado (ex.: ir para o perfil) */
+.notice-with-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.notice-with-action .btn-secondary {
+  width: auto;
+  padding: 4px 16px;
+}
+
+.plans-intro {
+  margin: 0 0 16px;
+}
+
+.plans-footnote {
+  margin: 16px 0 0;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.plans-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+
+/* Carteirinha de sócio de locadora: faixa preta com o nome em âmbar */
+.plan-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--paper);
+  box-shadow: var(--raised);
+}
+
+.plan-card-header {
+  padding: 10px 14px 8px;
+  background: var(--film);
+  border-bottom: 4px solid var(--amber);
+}
+
+.plan-card-name {
+  margin: 0;
+  color: var(--amber);
+  font-family: var(--font-display);
+  font-size: 2.4rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.plan-card-tagline {
+  margin: 2px 0 0;
+  color: var(--bg);
+  font-size: 0.85rem;
+}
+
+/* A conta gratuita é a carteirinha "sem cor": cinza de janela */
+.plan-card-free .plan-card-header {
+  background: var(--panel);
+  border-bottom-color: var(--border);
+}
+
+.plan-card-free .plan-card-name {
+  color: var(--text-h);
+}
+
+.plan-card-free .plan-card-tagline {
+  color: var(--text-soft);
+}
+
+.plan-card-current {
+  outline: 3px solid var(--amber);
+  outline-offset: -3px;
+}
+
+.plan-card-price {
+  margin: 0;
+  padding: 12px 14px 0;
+  color: var(--text-h);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  line-height: 1;
+}
+
+.plan-card-price small {
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.plan-perks {
+  flex: 1;
+  margin: 12px 14px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plan-perk {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  gap: 6px;
+  font-size: 0.9rem;
+}
+
+.plan-perk-mark {
+  font-weight: 700;
+}
+
+.plan-perk-yes .plan-perk-mark {
+  color: var(--success);
+}
+
+.plan-perk-no {
+  color: var(--text-soft);
+}
+
+.plan-perk-no .plan-perk-mark {
+  color: var(--error);
+}
+
+.plan-card-footer {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.plan-card-footer .btn-primary {
+  margin-top: 0;
+}
+
+.plan-card-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+/* Resumo da confirmação */
+.dialog-summary {
+  margin: 0 0 12px;
+  padding: 8px 10px;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+}
+
+.dialog-summary div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 0;
+}
+
+.dialog-summary dt {
+  color: var(--text-soft);
+}
+
+.dialog-summary dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.dialog-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Minha assinatura */
+.subscription-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.subscription-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px 16px;
+  padding: 14px;
+  background: var(--film);
+  border-bottom: 4px solid var(--amber);
+  color: var(--bg);
+  box-shadow: var(--raised);
+}
+
+.subscription-plan {
+  margin: 0;
+  color: var(--amber);
+  font-family: var(--font-display);
+  font-size: 2.6rem;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.subscription-meta {
+  margin: 4px 0 0;
+  font-size: 0.9rem;
+}
+
+.subscription-price {
+  margin: 0;
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.subscription-price small {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  color: var(--bg);
+}
+
+.group-box {
+  min-width: 0;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 2px groove #ffffff;
+}
+
+.group-box legend {
+  padding: 0 6px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.group-box > .field-hint {
+  display: block;
+  margin: 8px 0 0;
+}
+
+.group-subtitle {
+  margin: 14px 0 6px;
+  font-size: 0.9rem;
+}
+
+.member-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.member-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+}
+
+.member-name {
+  display: block;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.member-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.member-tags .badge {
+  margin-top: 2px;
+}
+
+.member-row .btn-secondary {
+  width: auto;
+  min-height: 26px;
+  padding: 2px 12px;
+}
+
+.invite-form {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.invite-form .field {
+  flex: 1 1 220px;
+}
+
+.invite-form .btn-primary {
+  width: auto;
+  margin-top: 0;
+  padding: 4px 22px;
+}
+
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invite-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+}
+
+.invite-card p {
+  margin: 0;
+}
+
+.invite-expiry {
+  color: var(--text-soft);
+  font-size: 0.85rem;
+}
+
+.invite-actions,
+.subscription-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.subscription-actions {
+  justify-content: flex-end;
+}
+
+.invite-actions button,
+.subscription-actions button {
+  width: auto;
+  margin-top: 0;
+  padding: 4px 18px;
+}
+
+@media (max-width: 760px) {
+  .plans-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .member-row {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .member-row .btn-secondary {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+}
