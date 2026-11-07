@@ -103,6 +103,7 @@ public class MovieCatalogService : IMovieCatalogService
         Genres = GenreNames(movie),
         Rating = stats?.AverageRating,
         PosterUrl = movie.PosterUrl,
+        AgeRating = movie.AgeRating,
     };
 
     private static MovieDetailDto ToDetail(Movie movie, MovieRatingStats? stats) => new()
@@ -117,6 +118,8 @@ public class MovieCatalogService : IMovieCatalogService
         Votes = stats?.ReviewCount ?? 0,
         Synopsis = movie.Description,
         PosterUrl = movie.PosterUrl,
+        AgeRating = movie.AgeRating,
+        RuntimeMinutes = movie.RuntimeMinutes,
     };
 
     // Converte os códigos gravados no banco para o nome exibido, ignorando valores desconhecidos

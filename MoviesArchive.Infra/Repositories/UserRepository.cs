@@ -1,5 +1,6 @@
 ﻿using MoviesArchive.Infra.Database;
 using MoviesArchive.Domain.Interfaces;
+using MoviesArchive.Domain.Models.Subscriptions;
 using MoviesArchive.Domain.Models.Users;
 using Microsoft.EntityFrameworkCore;
 
@@ -105,9 +106,20 @@ public class UserRepository : IUserRepository
         await _dbContext.Lists
             .Where(list => list.UserId == id && !list.IsPublic)
             .ExecuteDeleteAsync();
+        // IgnoreQueryFilters: apaga também o que estiver escondido pela classificação indicativa
         await _dbContext.WatchHistory
+            .IgnoreQueryFilters()
             .Where(entry => entry.UserId == id)
             .ExecuteDeleteAsync();
+        await _dbContext.Watchlist
+            .Where(item => item.UserId == id)
+            .ExecuteDeleteAsync();
+        // Convites recebidos que ainda estavam pendentes deixam de valer
+        await _dbContext.FamilyInvites
+            .Where(invite => invite.InvitedUserId == id && invite.Status == InviteStatus.Pending)
+            .ExecuteUpdateAsync(set => set
+                .SetProperty(invite => invite.Status, InviteStatus.Canceled)
+                .SetProperty(invite => invite.RespondedAt, (DateTimeOffset?)DateTimeOffset.UtcNow));
         await _dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM \"UserFavorites\" WHERE \"UserId\" = {id}");
         await _dbContext.Database.ExecuteSqlInterpolatedAsync(
@@ -121,9 +133,22 @@ public class UserRepository : IUserRepository
         user.PhotoContentType = null;
         user.PasswordResetToken = null;
         user.PasswordResetExpiresAt = null;
+        // Sai do plano de que fazia parte (se era titular, a assinatura já foi encerrada antes)
+        user.SubscriptionId = null;
 
         await _dbContext.SaveChangesAsync();
         await transaction.CommitAsync();
+        return true;
+    }
+
+    public async Task<bool> SetBirthDateAsync(Guid id, DateOnly birthDate)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null)
+            return false;
+
+        user.BirthDate = birthDate;
+        await _dbContext.SaveChangesAsync();
         return true;
     }
 

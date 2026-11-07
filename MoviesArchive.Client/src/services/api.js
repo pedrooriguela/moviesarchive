@@ -3,9 +3,10 @@
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5197').replace(/\/$/, '')
 
 export class ApiError extends Error {
-  constructor(message, { status, field, fieldErrors } = {}) {
+  constructor(message, { status, field, fieldErrors, code } = {}) {
     super(message)
     this.status = status
+    this.code = code // regra que barrou o pedido, quando a API informa (ex.: "plan-full", "subscription-required")
     this.field = field // campo específico (ex.: "username", "email") vindo de 409 Conflict
     this.fieldErrors = fieldErrors ?? {} // erros de validação do [ApiController] (400)
   }
@@ -18,6 +19,7 @@ const FIELD_MAP = {
   email: 'email',
   password: 'password',
   newpassword: 'password', // senha nova da redefinição
+  birthdate: 'birthDate',
 }
 
 async function parseError(response) {
@@ -43,13 +45,14 @@ async function parseError(response) {
     const field = FIELD_MAP[data.field?.toLowerCase()] ?? data.field
     return new ApiError(data.message, {
       status: 409,
+      code: data.code,
       field,
       fieldErrors: field ? { [field]: data.message } : {},
     })
   }
 
   // 401 — { message }
-  if (data?.message) return new ApiError(data.message, { status: response.status })
+  if (data?.message) return new ApiError(data.message, { status: response.status, code: data.code })
   if (typeof data === 'string') return new ApiError(data, { status: response.status })
 
   return new ApiError(`Erro inesperado (HTTP ${response.status}).`, { status: response.status })
@@ -75,11 +78,11 @@ async function request(path, options = {}) {
 }
 
 /** POST /api/users/signup — body: CreateUserRequestDto { name, email, password } */
-export function signUp({ name, email, password }) {
+export function signUp({ name, email, password, birthDate }) {
   return request('/api/users/signup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name, email, password }),
+    body: JSON.stringify({ name, email, password, birthDate }),
   })
 }
 
@@ -127,11 +130,12 @@ export function getPhotoSrc(photoUrl) {
   return photoUrl ? `${API_URL}${photoUrl}` : null
 }
 
-export function updateMyProfile(token, { name }) {
+// birthDate é opcional: a API só aceita se a conta ainda não tiver data de nascimento
+export function updateMyProfile(token, { name, birthDate }) {
   return authFetch('/api/users/me', token, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify({ name, birthDate }),
   })
 }
 

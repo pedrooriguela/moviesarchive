@@ -49,6 +49,11 @@ public class UserController : Controller
         {
             return Conflict(new { field = "email", message = ex.Message });
         }
+        catch (InvalidBirthDateException ex)
+        {
+            // Mesmo formato dos erros de validação, para o front mostrar no campo
+            return BadRequest(new { errors = new Dictionary<string, string[]> { ["birthDate"] = [ex.Message] } });
+        }
     }
 
     [HttpGet("api/users/signin")]
@@ -81,7 +86,8 @@ public class UserController : Controller
         {
             Name = user.Name,
             Email = user.Email,
-            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
+            BirthDate = user.BirthDate
         });
     }
 
@@ -116,6 +122,26 @@ public class UserController : Controller
         if (existingUser != null && existingUser.Id != userId.Value)
             return Conflict(new { field = "name", message = "Esse nome de usuário já está em uso." });
 
+        // Data de nascimento: contas antigas informam uma vez e depois ela não muda mais,
+        // para ninguém trocar a idade e escapar da restrição de menores
+        if (request.BirthDate is DateOnly birthDate)
+        {
+            var current = await _userRepository.GetByIdAsync(userId.Value);
+            if (current == null)
+                return NotFound();
+
+            if (current.BirthDate is DateOnly saved && saved != birthDate)
+                return Conflict(new { field = "birthDate", message = "A data de nascimento não pode ser alterada depois de informada." });
+
+            if (current.BirthDate == null)
+            {
+                if (!BirthDates.IsValid(birthDate, BirthDates.Today()))
+                    return BadRequest(new { errors = new Dictionary<string, string[]> { ["birthDate"] = ["Informe uma data de nascimento válida."] } });
+
+                await _userRepository.SetBirthDateAsync(userId.Value, birthDate);
+            }
+        }
+
         var updated = await _userRepository.UpdateProfileAsync(userId.Value, name);
         if (!updated)
             return NotFound();
@@ -125,7 +151,8 @@ public class UserController : Controller
         {
             Name = user!.Name,
             Email = user.Email,
-            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
+            BirthDate = user.BirthDate
         });
     }
 

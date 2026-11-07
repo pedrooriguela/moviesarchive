@@ -35,6 +35,10 @@ public class HistoryController : Controller
             var entry = await _watchHistoryService.RecordAsync(userId.Value, request);
             return Ok(entry);
         }
+        catch (SubscriptionRequiredException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { code = "subscription-required", message = ex.Message });
+        }
         catch (MovieNotFoundException ex)
         {
             return NotFound(new { field = "movieId", message = ex.Message });

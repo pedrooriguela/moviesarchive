@@ -13,4 +13,8 @@ public class MovieDetailDto
     public int Votes { get; set; }
     public string? Synopsis { get; set; }
     public string? PosterUrl { get; set; }
+
+    // Classificação indicativa: idade mínima, 0 = livre
+    public int AgeRating { get; set; }
+    public int? RuntimeMinutes { get; set; }
 }

@@ -22,6 +22,11 @@ public class UserLoginService : IUserLoginService
 
     public async Task CreateAccountAsync(CreateUserRequestDto createUserRequestDto)
     {
+        var birthDate = createUserRequestDto.BirthDate
+            ?? throw new InvalidBirthDateException();
+        if (!BirthDates.IsValid(birthDate, BirthDates.Today()))
+            throw new InvalidBirthDateException();
+
         if (ReservedUserNames.IsReserved(createUserRequestDto.Name))
             throw new UsernameAlreadyInUseException();
 
@@ -32,6 +37,7 @@ public class UserLoginService : IUserLoginService
             throw new EmailAlreadyInUseException();
 
         var newUser = User.Builder.Create(createUserRequestDto.Name, createUserRequestDto.Email);
+        newUser.BirthDate = birthDate;
 
         var hashedPassword = _passwordHasherService.Hash(newUser, createUserRequestDto.Password);
 
