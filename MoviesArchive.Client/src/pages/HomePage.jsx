@@ -188,6 +188,11 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
       return (
         <div className="results-state">
           <p>Nenhum filme com esses filtros. Remova um filtro para ver mais resultados.</p>
+          {applied?.query && (
+            <p className="field-hint">
+              A busca por texto olha só o título e o diretor. Para gêneros, use as caixas em Filtros.
+            </p>
+          )}
           <button type="button" className="btn-secondary" onClick={clearAll}>
             Limpar filtros
           </button>
@@ -257,11 +262,11 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
 
         <form role="search" onSubmit={handleSubmit} noValidate>
           <div className="field">
-            <label htmlFor="busca-texto">Título, diretor ou gênero</label>
+            <label htmlFor="busca-texto">Título ou diretor</label>
             <input
               id="busca-texto"
               type="search"
-              placeholder="Ex.: Metropolis, Kurosawa, terror"
+              placeholder="Ex.: Metropolis, Kurosawa, kubrick iluminado"
               value={form.query}
               onChange={(event) => updateForm({ query: event.target.value })}
               autoFocus
