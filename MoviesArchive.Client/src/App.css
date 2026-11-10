@@ -2859,3 +2859,76 @@ form {
     justify-self: start;
   }
 }
+
+/* ===== Ficha: adicionar o filme às listas ===== */
+.movie-add-list {
+  width: auto;
+  padding: 6px 18px;
+}
+
+.list-picker {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0 0 12px;
+  padding: 4px;
+  list-style: none;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+}
+
+.list-pick {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.list-pick:hover {
+  background: var(--bg);
+}
+
+.list-pick input {
+  width: auto;
+  margin: 0;
+}
+
+.list-pick-title {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.list-pick-meta {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.list-pick .badge {
+  margin-top: 0;
+}
+
+.list-pick-error {
+  margin: 0 6px 6px 30px;
+}
+
+.list-picker-empty {
+  margin: 0 0 12px;
+}
+
+.list-create {
+  margin-bottom: 12px;
+}
+
+.list-create .group-box {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.list-create .btn-secondary {
+  align-self: flex-start;
+  width: auto;
+  padding: 4px 16px;
+}
