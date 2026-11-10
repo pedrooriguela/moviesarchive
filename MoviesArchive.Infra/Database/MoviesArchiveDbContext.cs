@@ -120,6 +120,11 @@ public class MoviesArchiveDbContext : DbContext
             .Property(movie => movie.Genres)
             .HasColumnType("text[]");
 
+        // translate() do PostgreSQL, usada pela busca para ignorar acentos (ver SearchText)
+        modelBuilder.HasDbFunction(typeof(SearchText).GetMethod(nameof(SearchText.Translate))!)
+            .HasName("translate")
+            .IsBuiltIn();
+
         // ---- Classificação indicativa: menores não veem filmes acima da própria idade em
         // nenhuma consulta (busca, prateleiras, ficha, avaliações, watchlist, listas, histórico, play).
         // Um filme escondido se comporta como inexistente.

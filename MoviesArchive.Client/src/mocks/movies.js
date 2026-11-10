@@ -60,9 +60,11 @@ function normalize(text) {
   return text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 }
 
-function matchesTerm(movie, term) {
-  const haystack = normalize([movie.title, movie.director ?? '', ...movie.genres].join(' '))
-  return haystack.includes(term)
+// Mesma regra da API: cada palavra precisa aparecer no título ou no diretor (sem acentos e maiúsculas).
+// Gênero não entra: tem o filtro próprio.
+function matchesTerms(movie, terms) {
+  const haystack = normalize([movie.title, movie.director ?? ''].join(' '))
+  return terms.every((term) => haystack.includes(term))
 }
 
 function sortMovies(items, sort) {
@@ -97,8 +99,8 @@ export function mockSearchCatalog({
         return
       }
 
-      const term = normalize(query.trim())
-      const filtered = MOVIES.filter((movie) => !term || matchesTerm(movie, term))
+      const terms = normalize(query).split(/\s+/).filter(Boolean)
+      const filtered = MOVIES.filter((movie) => terms.length === 0 || matchesTerms(movie, terms))
         .filter((movie) => !language || movie.language === language)
         .filter((movie) => yearFrom === undefined || movie.releaseYear >= yearFrom)
         .filter((movie) => yearTo === undefined || movie.releaseYear <= yearTo)
