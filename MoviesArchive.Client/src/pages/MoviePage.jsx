@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import AddToListDialog from '../components/AddToListDialog.jsx'
 import MovieArt from '../components/MovieArt.jsx'
 import Stars from '../components/Stars.jsx'
 import ReviewPanel from '../components/ReviewPanel.jsx'
@@ -24,6 +25,7 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
   const [loadingMore, setLoadingMore] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [playError, setPlayError] = useState('')
+  const [listsOpen, setListsOpen] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -238,6 +240,9 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
               <button type="button" className="btn-primary movie-play" onClick={handlePlay} disabled={playing}>
                 <span aria-hidden="true">▶</span> {playing ? 'Abrindo...' : 'Assistir'}
               </button>
+              <button type="button" className="btn-secondary movie-add-list" onClick={() => setListsOpen(true)}>
+                <span aria-hidden="true">+</span> Adicionar à lista
+              </button>
             </div>
 
             {playError && (
@@ -303,6 +308,10 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
       </nav>
 
       {renderBody()}
+
+      {listsOpen && movie && (
+        <AddToListDialog token={token} movie={movie} onClose={() => setListsOpen(false)} />
+      )}
 
       <StatusBar
         items={[
