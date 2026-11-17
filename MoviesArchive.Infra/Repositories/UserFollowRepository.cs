@@ -18,9 +18,9 @@ public class UserFollowRepository(MoviesArchiveDbContext db) : IUserFollowReposi
         if (search.Length > 0)
             users = users.Where(u => u.Name.ToLower().Contains(search.ToLower()));
         if (scope == "following")
-            users = users.Where(u => db.UserFollowers.Any(f => f.FollowerId == viewerId && f.FollowingId == u.Id));
+            users = users.Where(u => db.UserFollowers.Any(f => f.FollowerId == viewerId && f.FollowingId == u.Id && f.IsAccepted));
         if (scope == "followers")
-            users = users.Where(u => db.UserFollowers.Any(f => f.FollowingId == viewerId && f.FollowerId == u.Id));
+            users = users.Where(u => db.UserFollowers.Any(f => f.FollowingId == viewerId && f.FollowerId == u.Id && f.IsAccepted));
 
         return await users.OrderBy(u => u.Name).ThenBy(u => u.Id).Skip(offset).Take(limit)
             .Select(u => new SocialUserDto
@@ -28,17 +28,28 @@ public class UserFollowRepository(MoviesArchiveDbContext db) : IUserFollowReposi
                 Id = u.Id,
                 Name = u.Name,
                 PhotoUrl = u.PhotoData != null ? "/api/users/" + u.Id + "/photo" : null,
-                IsFollowing = db.UserFollowers.Any(f => f.FollowerId == viewerId && f.FollowingId == u.Id)
+                IsPrivate = u.IsPrivate,
+                IsRequested = db.UserFollowers.Any(f => f.FollowerId == viewerId && f.FollowingId == u.Id && !f.IsAccepted),
+                IsFollowing = db.UserFollowers.Any(f => f.FollowerId == viewerId && f.FollowingId == u.Id && f.IsAccepted)
             }).ToListAsync();
     }
 
     // A chave composta impede duplicatas, inclusive em requisições simultâneas.
-    public async Task FollowAsync(Guid followerId, Guid followingId) =>
+    public async Task FollowAsync(Guid followerId, Guid followingId)
+    {
+        await using var tx = await db.Database.BeginTransactionAsync();
+        var targets = await db.Users.FromSqlInterpolated($"""
+            SELECT * FROM "Users" WHERE "Id" = {followingId} FOR UPDATE
+            """).ToListAsync();
+        var target = targets.SingleOrDefault();
+        if (target == null || target.Name == ReservedUserNames.Removed) return;
         await db.Database.ExecuteSqlInterpolatedAsync($"""
-            INSERT INTO "UserFollowers" ("FollowerId", "FollowingId", "CreatedAt")
-            VALUES ({followerId}, {followingId}, CURRENT_TIMESTAMP)
+            INSERT INTO "UserFollowers" ("FollowerId", "FollowingId", "CreatedAt", "IsAccepted")
+            VALUES ({followerId}, {followingId}, CURRENT_TIMESTAMP, {!target.IsPrivate})
             ON CONFLICT ("FollowerId", "FollowingId") DO NOTHING
             """);
+        await tx.CommitAsync();
+    }
 
     public async Task UnfollowAsync(Guid followerId, Guid followingId) =>
         await db.UserFollowers.Where(f => f.FollowerId == followerId && f.FollowingId == followingId)

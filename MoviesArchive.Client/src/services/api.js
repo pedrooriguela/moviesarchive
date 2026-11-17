@@ -123,6 +123,13 @@ export function getMyProfile(token) {
   return authFetch('/api/users/me', token)
 }
 
+export function setProfilePrivacy(token, isPrivate) {
+  return authFetch('/api/users/me/privacy', token, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ isPrivate }),
+  })
+}
+
 export function getPhotoSrc(photoUrl) {
   return photoUrl ? `${API_URL}${photoUrl}` : null
 }

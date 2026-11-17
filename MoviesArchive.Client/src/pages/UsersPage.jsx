@@ -3,7 +3,7 @@ import { authFetch, getPhotoSrc } from '../services/api.js'
 
 const PAGE_SIZE = 20
 
-export default function UsersPage({ token, onBack }) {
+export default function UsersPage({ token, onBack, onOpenUser }) {
   const [search, setSearch] = useState('')
   const [scope, setScope] = useState('all')
   const [offset, setOffset] = useState(0)
@@ -17,7 +17,7 @@ export default function UsersPage({ token, onBack }) {
     const timer = setTimeout(() => {
       setResult({ loading: true, users: [], error: '' })
       const params = new URLSearchParams({ search, scope, offset, limit: PAGE_SIZE })
-      authFetch(`/api/users?${params}`, token)
+      authFetch(scope === 'requests' ? `/api/users/me/follow-requests?offset=${offset}&limit=${PAGE_SIZE}` : `/api/users?${params}`, token)
         .then((users) => { if (active) setResult({ loading: false, users, error: '' }) })
         .catch((error) => { if (active) setResult({ loading: false, users: [], error: error.message }) })
     }, 300)
@@ -29,15 +29,30 @@ export default function UsersPage({ token, onBack }) {
     setMessage('')
     try {
       await authFetch(`/api/users/${person.id}/follow`, token, {
-        method: person.isFollowing ? 'DELETE' : 'PUT',
+        method: person.isFollowing || person.isRequested ? 'DELETE' : 'PUT',
       })
-      setMessage(person.isFollowing ? `Você deixou de seguir ${person.name}.` : `Você está seguindo ${person.name}.`)
+      setMessage(person.isRequested ? `Solicitação para ${person.name} cancelada.` : person.isFollowing
+        ? `Você deixou de seguir ${person.name}.` : person.isPrivate
+          ? `Solicitação enviada para ${person.name}.` : `Você está seguindo ${person.name}.`)
+      setResult({ loading: true, users: [], error: '' })
       setRevision((value) => value + 1)
     } catch (error) {
       setMessage(error.message)
     } finally {
       setBusy(false)
     }
+  }
+
+  async function answerRequest(person, accept) {
+    setBusy(true)
+    setMessage('')
+    try {
+      await authFetch(`/api/users/me/follow-requests/${person.id}`, token, { method: accept ? 'PUT' : 'DELETE' })
+      setMessage(accept ? `Solicitação de ${person.name} aprovada.` : `Solicitação de ${person.name} recusada.`)
+      setResult({ loading: true, users: [], error: '' })
+      setRevision((value) => value + 1)
+    } catch (error) { setMessage(error.message) }
+    finally { setBusy(false) }
   }
 
   return (
@@ -50,7 +65,7 @@ export default function UsersPage({ token, onBack }) {
         <p>Encontre pessoas que também gostam de cinema.</p>
         <div className="field">
           <label htmlFor="users-search">Buscar por nome de usuário</label>
-          <input id="users-search" type="search" maxLength={100} value={search} disabled={busy}
+          <input id="users-search" type="search" maxLength={100} value={search} disabled={busy || scope === 'requests'}
             onChange={(event) => { setSearch(event.target.value); setOffset(0) }} />
         </div>
         <div className="field">
@@ -60,6 +75,7 @@ export default function UsersPage({ token, onBack }) {
             <option value="all">Todas as pessoas</option>
             <option value="following">Seguindo</option>
             <option value="followers">Meus seguidores</option>
+            <option value="requests">Solicitações recebidas</option>
           </select>
         </div>
         <p role="status">{message}</p>
@@ -76,12 +92,17 @@ export default function UsersPage({ token, onBack }) {
                 <li key={person.id} className="social-user">
                   {person.photoUrl ? <img src={getPhotoSrc(person.photoUrl)} alt="" /> :
                     <span className="social-avatar" aria-hidden="true">{person.name.charAt(0).toUpperCase()}</span>}
-                  <span className="social-name">{person.name}</span>
-                  <button type="button" className={person.isFollowing ? 'btn-secondary' : 'btn-primary'}
-                    disabled={busy} onClick={() => toggleFollow(person)}
-                    aria-label={`${person.isFollowing ? 'Deixar de seguir' : 'Seguir'} ${person.name}`}>
-                    {person.isFollowing ? 'Deixar de seguir' : 'Seguir'}
+                  <button type="button" className="social-name social-profile-link" onClick={() => onOpenUser(person.id)}>
+                    {person.name}{person.isPrivate ? ' · Privado' : ''}
                   </button>
+                  {scope === 'requests' ? <div className="social-actions">
+                    <button type="button" className="btn-primary" disabled={busy} onClick={() => answerRequest(person, true)}>Aprovar</button>
+                    <button type="button" className="btn-secondary" disabled={busy} onClick={() => answerRequest(person, false)}>Recusar</button>
+                  </div> : <button type="button" className={person.isFollowing || person.isRequested ? 'btn-secondary' : 'btn-primary'}
+                    disabled={busy} onClick={() => toggleFollow(person)}
+                    aria-label={`${person.isRequested ? 'Cancelar solicitação para' : person.isFollowing ? 'Deixar de seguir' : person.isPrivate ? 'Pedir para seguir' : 'Seguir'} ${person.name}`}>
+                    {person.isRequested ? 'Cancelar solicitação' : person.isFollowing ? 'Deixar de seguir' : person.isPrivate ? 'Pedir para seguir' : 'Seguir'}
+                  </button>}
                 </li>
               ))}
             </ul>

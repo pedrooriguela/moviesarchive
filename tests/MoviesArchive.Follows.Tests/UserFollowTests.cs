@@ -91,7 +91,7 @@ public class UserFollowTests
 
     [Fact]
     public void PublicDtoContainsNoPrivateFields() =>
-        Assert.Equal(new[] { "Id", "IsFollowing", "Name", "PhotoUrl" },
+        Assert.Equal(new[] { "Id", "IsFollowing", "IsPrivate", "IsRequested", "Name", "PhotoUrl" },
             typeof(SocialUserDto).GetProperties().Select(p => p.Name).OrderBy(n => n));
 
     [Fact]

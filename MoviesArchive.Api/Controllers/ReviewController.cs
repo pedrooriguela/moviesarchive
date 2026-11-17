@@ -28,9 +28,11 @@ public class ReviewController : Controller
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10)
     {
+        var viewerId = GetAuthenticatedUserId();
+        if (viewerId == null) return Unauthorized();
         try
         {
-            return Ok(await _reviewService.GetMovieReviewsAsync(movieId, Math.Max(1, page), Math.Clamp(pageSize, 1, MaxPageSize)));
+            return Ok(await _reviewService.GetMovieReviewsAsync(movieId, Math.Max(1, page), Math.Clamp(pageSize, 1, MaxPageSize), viewerId.Value));
         }
         catch (MovieNotFoundException ex)
         {

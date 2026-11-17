@@ -21,6 +21,7 @@ CREATE TABLE "Users" (
     "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "Name" text NOT NULL,
     "Email" text NOT NULL,
+    "IsPrivate" boolean NOT NULL DEFAULT false,
     "Password" text NOT NULL,
     "PhotoData" bytea,
     "PhotoContentType" text,
@@ -40,6 +41,7 @@ CREATE INDEX "IX_Users_PlanId" ON "Users" ("PlanId");
 CREATE TABLE "UserFollowers" (
     "FollowerId" uuid NOT NULL,
     "FollowingId" uuid NOT NULL,
+    "IsAccepted" boolean NOT NULL DEFAULT true,
     "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "PK_UserFollowers" PRIMARY KEY ("FollowerId", "FollowingId"),
     CONSTRAINT "FK_UserFollowers_Users_FollowerId"

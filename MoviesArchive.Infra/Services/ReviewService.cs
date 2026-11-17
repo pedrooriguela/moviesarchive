@@ -24,11 +24,11 @@ public class ReviewService : IReviewService
         _userRepository = userRepository;
     }
 
-    public async Task<MovieReviewsResponseDto> GetMovieReviewsAsync(Guid movieId, int page, int pageSize)
+    public async Task<MovieReviewsResponseDto> GetMovieReviewsAsync(Guid movieId, int page, int pageSize, Guid viewerId)
     {
         await EnsureMovieExistsAsync(movieId);
 
-        var (items, totalCount) = await _reviewRepository.GetByMovieAsync(movieId, page, pageSize);
+        var (items, totalCount) = await _reviewRepository.GetByMovieAsync(movieId, page, pageSize, viewerId);
         var counts = await _reviewRepository.CountByRatingAsync(movieId);
 
         // Índice 0 = 0,5 estrela ... índice 9 = 5 estrelas

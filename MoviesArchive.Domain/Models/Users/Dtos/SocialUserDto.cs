@@ -7,4 +7,6 @@ public class SocialUserDto
     public string Name { get; set; } = "";
     public string? PhotoUrl { get; set; }
     public bool IsFollowing { get; set; }
+    public bool IsPrivate { get; set; }
+    public bool IsRequested { get; set; }
 }

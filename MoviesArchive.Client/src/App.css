@@ -2488,3 +2488,13 @@ form {
 .social-user img, .social-avatar { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
 .social-avatar { display: grid; place-items: center; background: #ddd; color: #222; font-weight: bold; }
 .social-name { flex: 1; min-width: 100px; overflow-wrap: anywhere; }
+.social-profile-link { background: transparent; border: 0; box-shadow: none; text-align: left; padding: 4px; text-decoration: underline; cursor: pointer; color: inherit; font: inherit; }
+.social-profile-link:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+.social-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.profile-counters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; text-align: center; }
+.profile-counters dd { margin: 8px 0; font-weight: bold; font-size: 1.4rem; }
+.shared-content { padding-left: 20px; overflow-wrap: anywhere; }
+.shared-content li { margin-bottom: 16px; }
+.privacy-settings { margin-block: 16px; }
+.privacy-settings select { display: block; margin-block: 8px; }
+@media (max-width: 520px) { .profile-counters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

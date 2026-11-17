@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import DeleteAccountDialog from '../components/DeleteAccountDialog.jsx'
-import { getMyProfile, getPhotoSrc, removeMyProfilePhoto, updateMyProfile, uploadMyProfilePhoto } from '../services/api.js'
+import { getMyProfile, getPhotoSrc, removeMyProfilePhoto, updateMyProfile, uploadMyProfilePhoto, setProfilePrivacy } from '../services/api.js'
 
 export default function ProfilePage({ token, onBack, onProfileUpdated, onAccountDeleted }) {
   const [profile, setProfile] = useState(null)
@@ -15,6 +15,22 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+
+  async function changePrivacy(isPrivate) {
+    if (!isPrivate && !window.confirm('Ao tornar o perfil público, qualquer usuário autenticado poderá ver suas listas públicas e avaliações. Solicitações pendentes serão aprovadas. Continuar?')) return
+    setSaving(true)
+    setError('')
+    setNotice('')
+    try {
+      await setProfilePrivacy(token, isPrivate)
+      const updated = await getMyProfile(token)
+      setProfile(updated)
+      onProfileUpdated(updated)
+      setNotice(isPrivate ? 'Perfil privado. Novos seguidores precisam da sua aprovação; seguidores atuais permanecem.' : 'Perfil público. Solicitações pendentes foram aprovadas.')
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally { setSaving(false) }
+  }
 
   useEffect(() => {
     let active = true
@@ -126,6 +142,20 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
             <>
               {error && <div className="alert alert-error" role="alert">{error}</div>}
               {notice && <div className="alert alert-success" role="status">{notice}</div>}
+
+              <fieldset className="privacy-settings" disabled={saving}>
+                <legend>Privacidade do perfil</legend>
+                <label htmlFor="profile-privacy">Visibilidade</label>
+                <select id="profile-privacy" value={profile?.isPrivate ? 'private' : 'public'}
+                  onChange={(event) => changePrivacy(event.target.value === 'private')}>
+                  <option value="public">Público</option>
+                  <option value="private">Privado</option>
+                </select>
+                <p>{profile?.isPrivate
+                  ? 'Visitantes veem apenas foto, nome e quantidades. Aprove solicitações na Comunidade para liberar suas listas públicas e avaliações.'
+                  : 'Outros usuários podem seguir você e ver suas listas públicas e avaliações.'}</p>
+                <p>E-mail, listas privadas, histórico e watchlist continuam restritos a você.</p>
+              </fieldset>
 
               {isEditing ? (
                 <form onSubmit={handleSubmit}>

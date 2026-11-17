@@ -18,11 +18,13 @@ public class ReviewRepository : IReviewRepository
     public Task<Review?> GetByUserAndMovieAsync(Guid userId, Guid movieId) =>
         _dbContext.Reviews.FirstOrDefaultAsync(review => review.UserId == userId && review.MovieId == movieId);
 
-    public async Task<(List<ReviewWithAuthor> Items, int TotalCount)> GetByMovieAsync(Guid movieId, int page, int pageSize)
+    public async Task<(List<ReviewWithAuthor> Items, int TotalCount)> GetByMovieAsync(Guid movieId, int page, int pageSize, Guid viewerId)
     {
         var reviews = _dbContext.Reviews
             .AsNoTracking()
-            .Where(review => review.MovieId == movieId);
+            .Where(review => review.MovieId == movieId && _dbContext.Users.Any(u => u.Id == review.UserId &&
+                (u.Id == viewerId || !u.IsPrivate || _dbContext.UserFollowers.Any(f =>
+                    f.FollowerId == viewerId && f.FollowingId == u.Id && f.IsAccepted))));
 
         var totalCount = await reviews.CountAsync();
 

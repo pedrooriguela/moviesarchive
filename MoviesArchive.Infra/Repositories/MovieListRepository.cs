@@ -88,5 +88,8 @@ public class MovieListRepository : IMovieListRepository
     // Consultas de terceiros ignoram listas privadas; o dono continua vendo todas as suas
     private IQueryable<MovieList> VisibleTo(Guid requesterId) =>
         ListsWithItems()
-            .Where(list => list.UserId == requesterId || list.IsPublic);
+            .Where(list => list.UserId == requesterId || (list.IsPublic && _dbContext.Users.Any(u =>
+                u.Id == list.UserId && u.Name != MoviesArchive.Domain.Models.Users.ReservedUserNames.Removed &&
+                (!u.IsPrivate || _dbContext.UserFollowers.Any(f => f.FollowerId == requesterId &&
+                    f.FollowingId == u.Id && f.IsAccepted)))));
 }

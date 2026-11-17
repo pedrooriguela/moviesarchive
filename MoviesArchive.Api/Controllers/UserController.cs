@@ -81,7 +81,8 @@ public class UserController : Controller
         {
             Name = user.Name,
             Email = user.Email,
-            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
+            IsPrivate = user.IsPrivate
         });
     }
 
@@ -125,7 +126,8 @@ public class UserController : Controller
         {
             Name = user!.Name,
             Email = user.Email,
-            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null)
+            PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
+            IsPrivate = user.IsPrivate
         });
     }
 

@@ -32,6 +32,7 @@ public class MoviesArchiveDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<User>().Property(u => u.IsPrivate).HasDefaultValue(false);
 
         modelBuilder.Entity<UserFollower>(entity =>
         {
@@ -42,6 +43,7 @@ public class MoviesArchiveDbContext : DbContext
             entity.HasOne<User>().WithMany().HasForeignKey(f => f.FollowingId).OnDelete(DeleteBehavior.Cascade);
             entity.HasIndex(f => f.FollowingId);
             entity.Property(f => f.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+            entity.Property(f => f.IsAccepted).HasDefaultValue(true);
         });
 
         modelBuilder.Entity<Review>()

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import LandingPage from './pages/LandingPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import UsersPage from './pages/UsersPage.jsx'
+import SharedProfilePage from './pages/SharedProfilePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import SignUpPage from './pages/SignUpPage.jsx'
 import ProfilePage from './pages/ProfilePage.jsx'
@@ -45,6 +46,7 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState(null)
   const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
   const [playingMovie, setPlayingMovie] = useState(null) // filme aberto no player
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
@@ -127,6 +129,7 @@ function App() {
   function leaveMovie() {
     if (movieOrigin === 'watchlist') setAuthenticatedView('watchlist')
     else if (movieOrigin === 'history') setAuthenticatedView('history')
+    else if (movieOrigin === 'shared-profile') setAuthenticatedView('shared-profile')
     else goHome()
   }
 
@@ -189,7 +192,10 @@ function App() {
             />
         ) : user ? (
             authenticatedView === 'users' ? (
-                <UsersPage token={token} onBack={goHome} />
+                <UsersPage token={token} onBack={goHome} onOpenUser={(id) => { setSelectedUserId(id); setAuthenticatedView('shared-profile') }} />
+            ) : authenticatedView === 'shared-profile' ? (
+                <SharedProfilePage key={selectedUserId} token={token} userId={selectedUserId} viewerId={user.id}
+                    onBack={() => setAuthenticatedView('users')} onOpenMovie={(id) => openMovie(id, 'shared-profile')} />
             ) : authenticatedView === 'profile' ? (
                 <ProfilePage
                     token={token}
