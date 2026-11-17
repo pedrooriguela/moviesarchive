@@ -20,4 +20,7 @@ public class MovieDetailDto
 
     // Só diz se há vídeo: o endereço vem na resposta do play (POST /api/history), que confere a assinatura
     public bool HasVideo { get; set; }
+
+    // A pessoa logada já deu play neste filme
+    public bool Watched { get; set; }
 }
