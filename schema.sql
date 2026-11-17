@@ -256,10 +256,13 @@ CREATE TABLE "Notifications" (
     -- Quem curtiu ou respondeu
     "ActorId" uuid NOT NULL,
     "Type" text NOT NULL,
-    "MovieId" uuid NOT NULL,
-    "ReviewId" uuid NOT NULL,
+    -- Filme e avaliação: só nos avisos de avaliação
+    "MovieId" uuid,
+    "ReviewId" uuid,
     -- Resposta curtida, ou a resposta nova (avisos de resposta); nula em curtida de avaliação
     "ResponseId" uuid,
+    -- Convite do plano familiar: só nos avisos de plano (chave estrangeira criada depois de "FamilyInvites")
+    "FamilyInviteId" uuid,
     "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "ReadAt" timestamp with time zone,
     CONSTRAINT "PK_Notifications" PRIMARY KEY ("Id"),
@@ -274,7 +277,18 @@ CREATE TABLE "Notifications" (
     CONSTRAINT "FK_Notifications_Responses_ResponseId"
         FOREIGN KEY ("ResponseId") REFERENCES "Responses" ("Id") ON DELETE CASCADE,
     CONSTRAINT "CK_Notifications_Type"
-        CHECK ("Type" IN ('ReviewLiked', 'ReplyLiked', 'ReviewReplied', 'ReplyReplied'))
+        CHECK ("Type" IN ('ReviewLiked', 'ReplyLiked', 'ReviewReplied', 'ReplyReplied',
+                          'PlanInviteReceived', 'PlanInviteAccepted', 'PlanInviteDeclined')),
+    -- Avisos de avaliação têm filme e avaliação; avisos de plano têm só o convite
+    CONSTRAINT "CK_Notifications_Target"
+        CHECK (
+            ("Type" IN ('ReviewLiked', 'ReplyLiked', 'ReviewReplied', 'ReplyReplied')
+                AND "MovieId" IS NOT NULL AND "ReviewId" IS NOT NULL AND "FamilyInviteId" IS NULL)
+            OR
+            ("Type" IN ('PlanInviteReceived', 'PlanInviteAccepted', 'PlanInviteDeclined')
+                AND "FamilyInviteId" IS NOT NULL
+                AND "MovieId" IS NULL AND "ReviewId" IS NULL AND "ResponseId" IS NULL)
+        )
 );
 
 CREATE INDEX "IX_Notifications_UserId_CreatedAt" ON "Notifications" ("UserId", "CreatedAt");
@@ -282,6 +296,7 @@ CREATE INDEX "IX_Notifications_UserId_CreatedAt" ON "Notifications" ("UserId", "
 CREATE INDEX "IX_Notifications_UserId_Unread" ON "Notifications" ("UserId") WHERE "ReadAt" IS NULL;
 CREATE INDEX "IX_Notifications_ReviewId" ON "Notifications" ("ReviewId");
 CREATE INDEX "IX_Notifications_ResponseId" ON "Notifications" ("ResponseId");
+CREATE INDEX "IX_Notifications_FamilyInviteId" ON "Notifications" ("FamilyInviteId");
 
 -- ============================================================
 -- 10. WATCHLIST
@@ -372,5 +387,10 @@ CREATE TABLE "FamilyInvites" (
 CREATE UNIQUE INDEX "IX_FamilyInvites_Pending"
     ON "FamilyInvites" ("SubscriptionId", "InvitedUserId") WHERE "Status" = 'Pending';
 CREATE INDEX "IX_FamilyInvites_InvitedUserId" ON "FamilyInvites" ("InvitedUserId");
+
+-- Avisos de plano apontam para o convite (a tabela "Notifications" vem antes desta)
+ALTER TABLE "Notifications"
+    ADD CONSTRAINT "FK_Notifications_FamilyInvites_FamilyInviteId"
+    FOREIGN KEY ("FamilyInviteId") REFERENCES "FamilyInvites" ("Id") ON DELETE CASCADE;
 
 COMMIT;

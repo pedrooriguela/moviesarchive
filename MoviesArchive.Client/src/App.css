@@ -3674,6 +3674,37 @@ form {
   color: var(--text-soft);
 }
 
+/* Convite do plano: botões e situação logo abaixo do aviso, alinhados com o texto */
+.notification-invite-actions,
+.notification-invite-outcome {
+  /* 54px + 4px da faixa = mesma coluna do texto do aviso (12 + 32 do avatar + 10) */
+  margin: -4px 0 0;
+  padding: 0 12px 10px 54px;
+  border-left: 4px solid transparent;
+  font-size: 0.8rem;
+}
+
+.notification-list li.is-unread .notification-invite-actions,
+.notification-list li.is-unread .notification-invite-outcome {
+  border-left-color: var(--amber);
+  background: #fffaea;
+}
+
+.notification-invite-outcome {
+  color: var(--text-soft);
+}
+
+.notification-invite-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.notification-invite-error {
+  margin: 6px 0 0;
+  color: #a00000;
+}
+
 .notification-empty {
   margin: 3px 0 0;
   padding: 16px 14px;

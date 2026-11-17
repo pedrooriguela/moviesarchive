@@ -16,6 +16,7 @@ import AdminPage from './pages/AdminPage.jsx'
 import Avatar from './components/Avatar.jsx'
 import Dialog from './components/Dialog.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
+import { isPlanNotification } from './services/notifications.js'
 import { clearToken, getUserFromToken, isTokenExpiring, loadToken, saveToken } from './services/token.js'
 import { getMyProfile, logout, onSessionChange, refreshSession } from './services/api.js'
 import './App.css'
@@ -228,6 +229,9 @@ function App() {
     else goHome()
   }
 
+  // Muda quando um convite é respondido pelo sino: recarrega "Minha assinatura" se estiver aberta
+  const [subscriptionVersion, setSubscriptionVersion] = useState(0)
+
   function openSubscription() {
     setAuthenticatedView('subscription')
     window.scrollTo(0, 0)
@@ -260,12 +264,15 @@ function App() {
               <NotificationBell
                   token={token}
                   onOpen={(notification) =>
-                      openMovie(notification.movieId, 'home', {
-                        reviewId: notification.reviewId,
-                        replyId: notification.replyId,
-                        nonce: notification.id,
-                      })
+                      isPlanNotification(notification)
+                        ? openSubscription()
+                        : openMovie(notification.movieId, 'home', {
+                            reviewId: notification.reviewId,
+                            replyId: notification.replyId,
+                            nonce: notification.id,
+                          })
                   }
+                  onInviteAnswered={() => setSubscriptionVersion((version) => version + 1)}
               />
               {/* Única entrada para o perfil, onde ficam listas, histórico, assinatura e sair */}
               <button
@@ -353,6 +360,7 @@ function App() {
                 />
             ) : authenticatedView === 'subscription' ? (
                 <SubscriptionPage
+                    key={subscriptionVersion}
                     token={token}
                     user={activeUser}
                     onBack={openProfile}

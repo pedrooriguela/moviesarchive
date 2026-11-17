@@ -32,6 +32,16 @@ public class NotificationRepository : INotificationRepository
             .Where(item => item.ReplyId == replyId)
             .ExecuteDeleteAsync();
 
+    public Task DeleteInviteReceivedAsync(Guid inviteId) =>
+        _dbContext.Notifications
+            .Where(item => item.FamilyInviteId == inviteId && item.Type == NotificationType.PlanInviteReceived)
+            .ExecuteDeleteAsync();
+
+    public Task MarkInviteReadAsync(Guid userId, Guid inviteId) =>
+        _dbContext.Notifications
+            .Where(item => item.UserId == userId && item.FamilyInviteId == inviteId && item.ReadAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(item => item.ReadAt, (DateTimeOffset?)DateTimeOffset.UtcNow));
+
     public async Task<(List<Notification> Items, int TotalCount)> GetPageAsync(Guid userId, int page, int pageSize)
     {
         var query = _dbContext.Notifications

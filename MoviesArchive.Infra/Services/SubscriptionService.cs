@@ -1,5 +1,7 @@
+using Microsoft.Extensions.Logging;
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
+using MoviesArchive.Domain.Models.Notifications;
 using MoviesArchive.Domain.Models.Plans;
 using MoviesArchive.Domain.Models.Subscriptions;
 using MoviesArchive.Domain.Models.Subscriptions.Dtos;
@@ -12,17 +14,24 @@ namespace MoviesArchive.Infra.Services;
 // - cada pessoa está em no máximo uma assinatura (Users.SubscriptionId)
 // - familiar: até MaxMembers pessoas, titular incluído, contando os convites pendentes válidos
 // - quem já tem plano precisa cancelá-lo (ou sair do atual) antes de aceitar um convite
+// Avisos no sino: o convidado é avisado do convite; o titular, de que o convite foi aceito ou recusado.
 public class SubscriptionService : ISubscriptionService
 {
     private readonly ISubscriptionRepository _subscriptions;
     private readonly IUserRepository _users;
+    private readonly INotificationRepository _notifications;
+    private readonly ILogger<SubscriptionService> _logger;
 
     public SubscriptionService(
         ISubscriptionRepository subscriptions,
-        IUserRepository users)
+        IUserRepository users,
+        INotificationRepository notifications,
+        ILogger<SubscriptionService> logger)
     {
         _subscriptions = subscriptions;
         _users = users;
+        _notifications = notifications;
+        _logger = logger;
     }
 
     public async Task<List<PlanResponseDto>> GetPlansAsync() =>
@@ -151,11 +160,16 @@ public class SubscriptionService : ISubscriptionService
             throw Conflict("already-invited", $"{invitee.Name} já tem um convite pendente.");
 
         // Quem já tem plano pode ser convidado; só não consegue aceitar antes de cancelar o próprio
-        var added = await _subscriptions.TryAddInviteAsync(
-            new FamilyInvite(subscription.Id, invitee.Id), plan.MaxMembers, existing);
+        var invite = new FamilyInvite(subscription.Id, invitee.Id);
+        var added = await _subscriptions.TryAddInviteAsync(invite, plan.MaxMembers, existing);
         if (!added)
             throw Conflict("plan-full",
                 $"O plano já tem {People(plan.MaxMembers)}, contando os convites pendentes.");
+
+        // O convite vencido foi trocado pelo novo: fica só o aviso do novo
+        if (existing != null)
+            await RunNotificationAsync(() => _notifications.DeleteInviteReceivedAsync(existing.Id));
+        await NotifyAsync(invitee.Id, ownerId, NotificationType.PlanInviteReceived, invite.Id);
 
         return await GetStateAsync(ownerId);
     }
@@ -173,6 +187,9 @@ public class SubscriptionService : ISubscriptionService
 
         invite.Respond(InviteStatus.Canceled);
         await _subscriptions.SaveChangesAsync();
+
+        // O convidado não tem mais o que responder: o aviso some do sino dele
+        await RunNotificationAsync(() => _notifications.DeleteInviteReceivedAsync(invite.Id));
         return await GetStateAsync(ownerId);
     }
 
@@ -207,6 +224,9 @@ public class SubscriptionService : ISubscriptionService
         var plan = await GetPlanOfAsync(subscription);
 
         var result = await _subscriptions.TryAcceptInviteAsync(invite, user, plan.MaxMembers);
+        if (result == InviteAcceptResult.Accepted)
+            await AnsweredAsync(userId, invite, subscription.OwnerId, NotificationType.PlanInviteAccepted);
+
         return result switch
         {
             InviteAcceptResult.Accepted => await GetStateAsync(userId),
@@ -225,7 +245,42 @@ public class SubscriptionService : ISubscriptionService
 
         invite.Respond(InviteStatus.Declined);
         await _subscriptions.SaveChangesAsync();
+
+        var subscription = await _subscriptions.GetActiveAsync(invite.SubscriptionId);
+        if (subscription != null)
+            await AnsweredAsync(userId, invite, subscription.OwnerId, NotificationType.PlanInviteDeclined);
+        else
+            await RunNotificationAsync(() => _notifications.MarkInviteReadAsync(userId, invite.Id));
+
         return await GetStateAsync(userId);
+    }
+
+    // ---------- avisos ----------
+
+    // Convidado respondeu: o aviso do convite dele conta como lido e o titular é avisado
+    private async Task AnsweredAsync(Guid inviteeId, FamilyInvite invite, Guid ownerId, NotificationType type)
+    {
+        await RunNotificationAsync(() => _notifications.MarkInviteReadAsync(inviteeId, invite.Id));
+        await NotifyAsync(ownerId, inviteeId, type, invite.Id);
+    }
+
+    private Task NotifyAsync(Guid recipientId, Guid actorId, NotificationType type, Guid inviteId) =>
+        recipientId == actorId
+            ? Task.CompletedTask
+            : RunNotificationAsync(() => _notifications.AddAsync(
+                Notification.Builder.CreateForInvite(recipientId, actorId, type, inviteId)));
+
+    // O aviso é secundário: o convite já foi gravado, então uma falha aqui só vai para o log
+    private async Task RunNotificationAsync(Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            _logger.LogError(exception, "Falha ao gravar aviso de convite do plano.");
+        }
     }
 
     // ---------- apoio ----------
