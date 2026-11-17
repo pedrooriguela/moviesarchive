@@ -11,4 +11,7 @@ public class MovieCardDto
     public List<string> Genres { get; set; } = [];
     public decimal? Rating { get; set; }
     public string? PosterUrl { get; set; }
+
+    // Classificação indicativa: idade mínima, 0 = livre
+    public int AgeRating { get; set; }
 }

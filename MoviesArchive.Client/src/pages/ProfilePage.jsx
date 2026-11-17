@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import DeleteAccountDialog from '../components/DeleteAccountDialog.jsx'
+import { formatDate, todayIso } from '../utils/dates.js'
 import { getMyProfile, getPhotoSrc, removeMyProfilePhoto, updateMyProfile, uploadMyProfilePhoto } from '../services/api.js'
 
 export default function ProfilePage({ token, onBack, onProfileUpdated, onAccountDeleted }) {
   const [profile, setProfile] = useState(null)
   const [name, setName] = useState('')
+  const [birthDate, setBirthDate] = useState('') // só editável enquanto a conta não tiver data
   const [selectedPhoto, setSelectedPhoto] = useState(null)
   const [removePhoto, setRemovePhoto] = useState(false)
   const [previewUrl, setPreviewUrl] = useState(null)
@@ -24,6 +26,7 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
         if (!active) return
         setProfile(data)
         setName(data.name)
+        setBirthDate(data.birthDate ?? '')
         onProfileUpdated(data)
       })
       .catch((requestError) => {
@@ -60,9 +63,15 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
       return
     }
 
+    const newBirthDate = !profile?.birthDate && birthDate ? birthDate : undefined
+    if (newBirthDate && (newBirthDate > todayIso() || newBirthDate < '1900-01-01')) {
+      setError('Informe uma data de nascimento válida.')
+      return
+    }
+
     setSaving(true)
     try {
-      await updateMyProfile(token, { name: trimmedName })
+      await updateMyProfile(token, { name: trimmedName, birthDate: newBirthDate })
       if (selectedPhoto) {
         await uploadMyProfilePhoto(token, selectedPhoto)
       } else if (removePhoto) {
@@ -85,6 +94,7 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
 
   function cancelEditing() {
     setName(profile?.name ?? '')
+    setBirthDate(profile?.birthDate ?? '')
     setSelectedPhoto(null)
     setRemovePhoto(false)
     setImageFailed(false)
@@ -148,6 +158,27 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
                   </div>
 
                   <div className="field">
+                    <label htmlFor="profile-birthdate">Data de nascimento</label>
+                    {profile?.birthDate ? (
+                      <input id="profile-birthdate" value={formatDate(profile.birthDate)} readOnly />
+                    ) : (
+                      <input
+                        id="profile-birthdate"
+                        type="date"
+                        min="1900-01-01"
+                        max={todayIso()}
+                        value={birthDate}
+                        onChange={(event) => setBirthDate(event.target.value)}
+                      />
+                    )}
+                    <span className="field-hint">
+                      {profile?.birthDate
+                        ? 'A data de nascimento não pode ser alterada.'
+                        : 'Necessária para assinar um plano. Depois de salva, não pode ser alterada.'}
+                    </span>
+                  </div>
+
+                  <div className="field">
                     <label htmlFor="profile-photo">
                       Foto de perfil (JPEG, PNG ou WebP. Até 5 MB)
                     </label>
@@ -193,6 +224,8 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
                     <dd>{profile?.name}</dd>
                     <dt>Email</dt>
                     <dd>{profile?.email}</dd>
+                    <dt>Data de nascimento</dt>
+                    <dd>{profile?.birthDate ? formatDate(profile.birthDate) : 'Não informada'}</dd>
                     <dt>Foto</dt>
                     <dd>{profile?.photoUrl ? 'Configurada' : 'Não definida'}</dd>
                   </dl>

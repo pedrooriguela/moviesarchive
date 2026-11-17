@@ -3,16 +3,30 @@ BEGIN;
 -- ============================================================
 -- 1. PLANOS
 -- ============================================================
+-- A conta gratuita não é um plano: é a conta sem assinatura
 CREATE TABLE "Plans" (
     "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
     "Name" text NOT NULL,
-    "Price" numeric NOT NULL DEFAULT 0,
+    "Price" numeric(10,2) NOT NULL DEFAULT 0,
     "Description" text,
+    "Type" text NOT NULL,
+    "MaxMembers" integer NOT NULL,
+    "IsActive" boolean NOT NULL DEFAULT true,
     CONSTRAINT "PK_Plans" PRIMARY KEY ("Id"),
-    CONSTRAINT "CK_Plans_Price" CHECK ("Price" >= 0)
+    CONSTRAINT "CK_Plans_Price" CHECK ("Price" >= 0),
+    CONSTRAINT "CK_Plans_Type" CHECK ("Type" IN ('Individual', 'Family')),
+    -- Individual: 1 pessoa. Familiar: até 4, titular incluído.
+    CONSTRAINT "CK_Plans_MaxMembers" CHECK (
+        ("Type" = 'Individual' AND "MaxMembers" = 1) OR
+        ("Type" = 'Family' AND "MaxMembers" BETWEEN 2 AND 4))
 );
 
 CREATE UNIQUE INDEX "IX_Plans_Name" ON "Plans" ("Name");
+
+-- Planos à venda (preços de exemplo)
+INSERT INTO "Plans" ("Name", "Description", "Type", "Price", "MaxMembers") VALUES
+    ('Individual', 'Assista e baixe os filmes do acervo. Para uma pessoa.', 'Individual', 19.90, 1),
+    ('Familiar', 'Tudo do Individual para até 4 pessoas, cada uma com a própria conta.', 'Family', 34.90, 4);
 
 -- ============================================================
 -- 2. USUÁRIOS
@@ -24,15 +38,20 @@ CREATE TABLE "Users" (
     "Password" text NOT NULL,
     "PhotoData" bytea,
     "PhotoContentType" text,
-    "PlanId" uuid,
+    "PasswordResetToken" text,
+    "PasswordResetExpiresAt" timestamp with time zone,
+    -- Opcional porque contas antigas não têm; a API exige no cadastro novo
+    "BirthDate" date,
+    -- Assinatura ATIVA de que a pessoa faz parte (titular ou convidada); nula = gratuita.
+    -- A chave estrangeira é criada depois de "Subscriptions" (seção 12).
+    "SubscriptionId" uuid,
     CONSTRAINT "PK_Users" PRIMARY KEY ("Id"),
-    CONSTRAINT "FK_Users_Plans_PlanId"
-        FOREIGN KEY ("PlanId") REFERENCES "Plans" ("Id") ON DELETE SET NULL
+    CONSTRAINT "CK_Users_BirthDate" CHECK ("BirthDate" IS NULL OR "BirthDate" >= DATE '1900-01-01')
 );
 
 -- Unicidade de email sem diferenciar maiúsculas/minúsculas
 CREATE UNIQUE INDEX "IX_Users_Email" ON "Users" (lower("Email"));
-CREATE INDEX "IX_Users_PlanId" ON "Users" ("PlanId");
+CREATE INDEX "IX_Users_SubscriptionId" ON "Users" ("SubscriptionId");
 
 -- ============================================================
 -- 3. SEGUIDORES (Relacionamento N:N Usuário -> Usuário)
@@ -64,7 +83,12 @@ CREATE TABLE "Movies" (
     "Director" text,
     "PosterUrl" text,
     "Genres" text[] NOT NULL DEFAULT '{}',
+    -- Classificação indicativa: idade mínima (0 = livre). Sem classificação conhecida, 18.
+    "AgeRating" integer NOT NULL DEFAULT 18,
+    "RuntimeMinutes" integer,
     CONSTRAINT "PK_Movies" PRIMARY KEY ("Id"),
+    CONSTRAINT "CK_Movies_AgeRating" CHECK ("AgeRating" IN (0, 10, 12, 14, 16, 18)),
+    CONSTRAINT "CK_Movies_RuntimeMinutes" CHECK ("RuntimeMinutes" IS NULL OR "RuntimeMinutes" > 0),
     CONSTRAINT "CK_Movies_Genres" CHECK ("Genres" <@ ARRAY['Acao','Comedia','Crime','Drama','Fantasia','FiccaoCientifica','Romance','Suspense','Terror']::text[])
 );
 
@@ -196,5 +220,68 @@ CREATE TABLE "WatchHistory" (
 -- A linha do tempo busca por usuário, do mais recente para o mais antigo
 CREATE INDEX "IX_WatchHistory_UserId_WatchedAt" ON "WatchHistory" ("UserId", "WatchedAt" DESC);
 CREATE INDEX "IX_WatchHistory_MovieId" ON "WatchHistory" ("MovieId");
+
+-- ============================================================
+-- 12. ASSINATURAS
+-- ============================================================
+-- EndedAt nulo = ativa. Trocar de plano encerra a linha (PlanChanged) e abre outra.
+CREATE TABLE "Subscriptions" (
+    "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "OwnerId" uuid NOT NULL,
+    "PlanId" uuid NOT NULL,
+    "StartedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "EndedAt" timestamp with time zone,
+    "EndReason" text,
+    CONSTRAINT "PK_Subscriptions" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_Subscriptions_Users_OwnerId"
+        FOREIGN KEY ("OwnerId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    -- Plano com assinaturas não pode ser apagado: o admin o tira de venda (IsActive)
+    CONSTRAINT "FK_Subscriptions_Plans_PlanId"
+        FOREIGN KEY ("PlanId") REFERENCES "Plans" ("Id") ON DELETE RESTRICT,
+    CONSTRAINT "CK_Subscriptions_EndReason"
+        CHECK ("EndReason" IS NULL OR "EndReason" IN ('Canceled', 'PlanChanged', 'AccountDeleted')),
+    CONSTRAINT "CK_Subscriptions_Ended"
+        CHECK (("EndedAt" IS NULL) = ("EndReason" IS NULL)),
+    CONSTRAINT "CK_Subscriptions_Dates"
+        CHECK ("EndedAt" IS NULL OR "EndedAt" >= "StartedAt")
+);
+
+-- Um titular tem no máximo uma assinatura ativa
+CREATE UNIQUE INDEX "IX_Subscriptions_OwnerId_Active"
+    ON "Subscriptions" ("OwnerId") WHERE "EndedAt" IS NULL;
+CREATE INDEX "IX_Subscriptions_PlanId" ON "Subscriptions" ("PlanId");
+
+-- Integrantes: Users.SubscriptionId aponta para a assinatura ativa (criada aqui por causa do ciclo)
+ALTER TABLE "Users" ADD CONSTRAINT "FK_Users_Subscriptions_SubscriptionId"
+    FOREIGN KEY ("SubscriptionId") REFERENCES "Subscriptions" ("Id") ON DELETE SET NULL;
+
+-- ============================================================
+-- 13. CONVITES DO PLANO FAMILIAR
+-- ============================================================
+CREATE TABLE "FamilyInvites" (
+    "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "SubscriptionId" uuid NOT NULL,
+    "InvitedUserId" uuid NOT NULL,
+    "Status" text NOT NULL DEFAULT 'Pending',
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ExpiresAt" timestamp with time zone NOT NULL,
+    "RespondedAt" timestamp with time zone,
+    CONSTRAINT "PK_FamilyInvites" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_FamilyInvites_Subscriptions_SubscriptionId"
+        FOREIGN KEY ("SubscriptionId") REFERENCES "Subscriptions" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_FamilyInvites_Users_InvitedUserId"
+        FOREIGN KEY ("InvitedUserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "CK_FamilyInvites_Status"
+        CHECK ("Status" IN ('Pending', 'Accepted', 'Declined', 'Canceled')),
+    CONSTRAINT "CK_FamilyInvites_Responded"
+        CHECK (("Status" = 'Pending') = ("RespondedAt" IS NULL)),
+    CONSTRAINT "CK_FamilyInvites_Expires"
+        CHECK ("ExpiresAt" > "CreatedAt")
+);
+
+-- No máximo um convite pendente por pessoa na mesma assinatura
+CREATE UNIQUE INDEX "IX_FamilyInvites_Pending"
+    ON "FamilyInvites" ("SubscriptionId", "InvitedUserId") WHERE "Status" = 'Pending';
+CREATE INDEX "IX_FamilyInvites_InvitedUserId" ON "FamilyInvites" ("InvitedUserId");
 
 COMMIT;

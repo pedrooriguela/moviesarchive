@@ -22,6 +22,12 @@ public class Movie : Entity
     // Nomes do enum Genre, gravados em text[]
     public List<string> Genres { get; set; } = [];
 
+    // Classificação indicativa: idade mínima (0 = livre). Ver AgeRatings.
+    // Sem classificação conhecida, 18: na dúvida, esconder de menores.
+    public int AgeRating { get; set; } = AgeRatings.Adult;
+
+    public int? RuntimeMinutes { get; set; }
+
     public class Builder
     {
         public static Movie Create(string title, DateOnly? releaseDate) =>

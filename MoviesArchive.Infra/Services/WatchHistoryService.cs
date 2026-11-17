@@ -11,17 +11,25 @@ public class WatchHistoryService : IWatchHistoryService
 {
     private readonly IWatchHistoryRepository _watchHistoryRepository;
     private readonly IMovieRepository _movieRepository;
+    private readonly IUserRepository _userRepository;
 
     public WatchHistoryService(
         IWatchHistoryRepository watchHistoryRepository,
-        IMovieRepository movieRepository)
+        IMovieRepository movieRepository,
+        IUserRepository userRepository)
     {
         _watchHistoryRepository = watchHistoryRepository;
         _movieRepository = movieRepository;
+        _userRepository = userRepository;
     }
 
     public async Task<WatchHistoryEntryResponseDto> RecordAsync(Guid userId, RecordWatchRequestDto request)
     {
+        // Assistir é o que o plano libera: a conta gratuita navega, mas não dá play
+        var user = await _userRepository.GetByIdAsync(userId);
+        if (user?.SubscriptionId == null)
+            throw new SubscriptionRequiredException();
+
         var movie = await _movieRepository.GetByIdAsync(request.MovieId)
             ?? throw new MovieNotFoundException();
 

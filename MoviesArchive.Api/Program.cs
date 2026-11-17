@@ -8,6 +8,9 @@ using MoviesArchive.Infra.Settings;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using System.Security.Claims;
+using MoviesArchive.Domain.Common;
+using MoviesArchive.Domain.Models.Users;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,6 +53,9 @@ builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddScoped<IWatchHistoryRepository, WatchHistoryRepository>();
 builder.Services.AddScoped<IWatchHistoryService, WatchHistoryService>();
+builder.Services.AddScoped<ViewerContext>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -76,6 +82,21 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Idade de quem está pedindo: os filtros globais de filmes escondem o que estiver acima dela.
+// Lê do banco a cada requisição (e não do token) para valer já no dia do aniversário.
+app.Use(async (context, next) =>
+{
+    var value = context.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? context.User.FindFirstValue("sub");
+    if (Guid.TryParse(value, out var userId))
+    {
+        var user = await context.RequestServices.GetRequiredService<IUserRepository>().GetByIdAsync(userId);
+        context.RequestServices.GetRequiredService<ViewerContext>()
+            .Set(userId, user?.MaxAgeRatingOn(BirthDates.Today()));
+    }
+
+    await next();
+});
 app.MapControllers();
 
 app.Run();

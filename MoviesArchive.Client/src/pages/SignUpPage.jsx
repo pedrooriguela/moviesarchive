@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import TextField from '../components/TextField.jsx'
 import { signIn, signUp } from '../services/api.js'
+import { todayIso } from '../utils/dates.js'
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -13,12 +14,15 @@ function validate(form) {
   if (!form.password) errs.password = 'A senha é obrigatória'
   else if (form.password.length < 6) errs.password = 'A senha deve ter pelo menos 6 caracteres'
   if (form.confirmPassword !== form.password) errs.confirmPassword = 'As senhas não coincidem'
+  if (!form.birthDate) errs.birthDate = 'A data de nascimento é obrigatória'
+  else if (form.birthDate > todayIso() || form.birthDate < '1900-01-01')
+    errs.birthDate = 'Informe uma data de nascimento válida'
   return errs
 }
 
 // hint: título que o visitante clicou na vitrine, para contextualizar o cadastro
 export default function SignUpPage({ hint, onLoggedIn, onSignedUp, onGoToLogin }) {
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', birthDate: '' })
   const [fieldErrors, setFieldErrors] = useState({})
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
@@ -37,7 +41,12 @@ export default function SignUpPage({ hint, onLoggedIn, onSignedUp, onGoToLogin }
     setFieldErrors(errs)
     if (Object.keys(errs).length) return
 
-    const payload = { name: form.name.trim(), email: form.email.trim(), password: form.password }
+    const payload = {
+      name: form.name.trim(),
+      email: form.email.trim(),
+      password: form.password,
+      birthDate: form.birthDate,
+    }
 
     setLoading(true)
     try {
@@ -88,6 +97,17 @@ export default function SignUpPage({ hint, onLoggedIn, onSignedUp, onGoToLogin }
           value={form.email}
           onChange={handleChange}
           error={fieldErrors.email}
+        />
+        <TextField
+          label="Data de nascimento"
+          name="birthDate"
+          type="date"
+          autoComplete="bday"
+          min="1900-01-01"
+          max={todayIso()}
+          value={form.birthDate}
+          onChange={handleChange}
+          error={fieldErrors.birthDate}
         />
         <TextField
           label="Senha"
