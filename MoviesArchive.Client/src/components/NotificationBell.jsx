@@ -4,8 +4,10 @@ import {
   getMyNotifications,
   getUnreadNotificationCount,
   markAllNotificationsRead,
+  isPlanNotification,
   markNotificationRead,
 } from '../services/notifications.js'
+import { acceptInvite, declineInvite } from '../services/subscriptions.js'
 
 const POLL_MS = 60_000 // de quanto em quanto tempo o contador é atualizado
 
@@ -55,14 +57,25 @@ const ACTIONS = {
   ReplyLiked: 'curtiu sua resposta em',
   ReviewReplied: 'respondeu à sua avaliação de',
   ReplyReplied: 'respondeu à sua resposta em',
+  PlanInviteReceived: 'convidou você para o plano',
+  PlanInviteAccepted: 'aceitou seu convite e entrou no plano',
+  PlanInviteDeclined: 'recusou seu convite para o plano',
+}
+
+// Situação do convite recebido, quando não dá mais para responder
+const INVITE_OUTCOMES = {
+  Accepted: 'Você aceitou este convite.',
+  Declined: 'Você recusou este convite.',
+  Closed: 'Este convite não está mais valendo.',
 }
 
 function NotificationText({ notification }) {
+  const subject = isPlanNotification(notification) ? notification.planName || 'familiar' : notification.movieTitle
   return (
     <>
       <span className="notification-text">
         <strong>{notification.actorName || 'Usuário removido'}</strong> {ACTIONS[notification.type]}{' '}
-        <cite>{notification.movieTitle}</cite>
+        <cite>{subject}</cite>
       </span>
       {notification.excerpt && <span className="notification-excerpt">“{notification.excerpt}”</span>}
       <time className="notification-time" dateTime={notification.createdAt}>
@@ -72,9 +85,57 @@ function NotificationText({ notification }) {
   )
 }
 
+// Responder o convite direto no sino. Os botões ficam fora do botão do aviso (não dá para aninhar).
+function InviteActions({ notification, token, onAnswered }) {
+  const [busy, setBusy] = useState('')
+  const [error, setError] = useState('')
+
+  if (notification.inviteStatus !== 'Pending') {
+    const outcome = INVITE_OUTCOMES[notification.inviteStatus]
+    return outcome ? <p className="notification-invite-outcome">{outcome}</p> : null
+  }
+
+  async function answer(kind) {
+    setBusy(kind)
+    setError('')
+    try {
+      await (kind === 'accept' ? acceptInvite : declineInvite)(notification.inviteId, token)
+      onAnswered(notification, kind === 'accept' ? 'Accepted' : 'Declined')
+    } catch (requestError) {
+      // Convite que venceu ou foi cancelado enquanto o painel estava aberto
+      if (requestError.code === 'invite-closed' || requestError.code === 'invite-not-found') {
+        onAnswered(notification, 'Closed')
+      } else {
+        setError(requestError.message)
+      }
+    } finally {
+      setBusy('')
+    }
+  }
+
+  return (
+    <div className="notification-invite-actions">
+      <div className="notification-invite-buttons">
+        <button type="button" className="btn-primary btn-small" disabled={busy !== ''} onClick={() => answer('accept')}>
+          {busy === 'accept' ? 'Aceitando...' : 'Aceitar'}
+        </button>
+        <button type="button" className="btn-secondary btn-small" disabled={busy !== ''} onClick={() => answer('decline')}>
+          {busy === 'decline' ? 'Recusando...' : 'Recusar'}
+        </button>
+      </div>
+      {error && (
+        <p className="notification-invite-error" role="alert">
+          {error}
+        </p>
+      )}
+    </div>
+  )
+}
+
 // Sino do cabeçalho: contador de não lidas e painel com os avisos.
-// onOpen(notification) leva à conversa do aviso.
-export default function NotificationBell({ token, onOpen }) {
+// onOpen(notification) leva à conversa do aviso (ou à assinatura, nos avisos de plano).
+// onInviteAnswered(status) avisa que um convite foi respondido aqui, para a assinatura se atualizar.
+export default function NotificationBell({ token, onOpen, onInviteAnswered = () => {} }) {
   const panelId = useId()
   const rootRef = useRef(null)
   const buttonRef = useRef(null)
@@ -160,6 +221,19 @@ export default function NotificationBell({ token, onOpen }) {
     onOpen(notification)
   }
 
+  function inviteAnswered(notification, status) {
+    if (!notification.isRead) setUnread((count) => Math.max(0, count - 1))
+    setState((previous) => ({
+      ...previous,
+      items: previous.items.map((item) =>
+        item.id === notification.id ? { ...item, inviteStatus: status, isRead: true } : item,
+      ),
+    }))
+    // A API já marca o aviso como lido ao responder; esta chamada cobre o convite encerrado
+    if (!notification.isRead) markNotificationRead(notification.id, token).catch(() => {})
+    if (status !== 'Closed') onInviteAnswered(status)
+  }
+
   const label = unread > 0 ? `Notificações, ${unread} não ${unread === 1 ? 'lida' : 'lidas'}` : 'Notificações'
 
   return (
@@ -210,14 +284,15 @@ export default function NotificationBell({ token, onOpen }) {
 
           {state.status === 'ready' && state.items.length === 0 && (
             <p className="notification-empty">
-              Nada por aqui ainda. Quando alguém curtir ou responder uma avaliação ou resposta sua, o aviso aparece aqui.
+              Nada por aqui ainda. Curtidas e respostas no que você escreveu e convites para planos familiares
+              aparecem aqui.
             </p>
           )}
 
           {state.items.length > 0 && (
             <ul className="notification-list">
               {state.items.map((notification) => (
-                <li key={notification.id}>
+                <li key={notification.id} className={notification.isRead ? undefined : 'is-unread'}>
                   <button
                     type="button"
                     className={notification.isRead ? 'notification-item' : 'notification-item is-unread'}
@@ -229,6 +304,9 @@ export default function NotificationBell({ token, onOpen }) {
                     </span>
                     {!notification.isRead && <span className="visually-hidden"> (não lida)</span>}
                   </button>
+                  {notification.type === 'PlanInviteReceived' && (
+                    <InviteActions notification={notification} token={token} onAnswered={inviteAnswered} />
+                  )}
                 </li>
               ))}
             </ul>

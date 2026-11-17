@@ -12,6 +12,12 @@ public interface INotificationRepository
     // Resposta excluída: somem os avisos sobre ela (curtidas e o aviso de que ela foi escrita)
     Task DeleteForReplyAsync(Guid replyId);
 
+    // Convite cancelado ou trocado por um novo: some o aviso de "convite recebido"
+    Task DeleteInviteReceivedAsync(Guid inviteId);
+
+    // Convite respondido (pelo sino ou pela página da assinatura): o aviso dele conta como lido
+    Task MarkInviteReadAsync(Guid userId, Guid inviteId);
+
     Task<(List<Notification> Items, int TotalCount)> GetPageAsync(Guid userId, int page, int pageSize);
     Task<int> CountUnreadAsync(Guid userId);
     Task MarkAllReadAsync(Guid userId);
