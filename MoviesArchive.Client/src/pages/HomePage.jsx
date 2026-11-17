@@ -4,12 +4,11 @@ import MovieCard from '../components/MovieCard.jsx'
 import Shelf from '../components/Shelf.jsx'
 import StatusBar from '../components/StatusBar.jsx'
 import { GENRES } from '../constants/genres.js'
+import { LANGUAGE_OPTIONS } from '../constants/languages.js'
 import { getHome, searchCatalog } from '../services/catalog.js'
 
 const PAGE_SIZE = 12
 
-// Listas fixas por enquanto. Depois podem vir da API.
-const LANGUAGE_OPTIONS = ['Alemão', 'Coreano', 'Francês', 'Inglês', 'Italiano', 'Japonês', 'Português']
 const SORT_OPTIONS = [
   { value: 'default', label: 'Título (A a Z)' },
   { value: 'rating-desc', label: 'Mais bem avaliados' },
@@ -19,7 +18,8 @@ const SORT_OPTIONS = [
 ]
 const DEFAULT_FORM = { query: '', language: '', yearFrom: '', yearTo: '', genres: [], sort: 'default' }
 
-export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, onOpenHistory, onOpenSubscription, onOpenProfile, onLogout, onOpenMovie }) {
+// Listas, histórico, assinatura e sair ficam no perfil (botão com a foto, no topo da página)
+export default function HomePage({ user, token, onOpenMovie }) {
   const [form, setForm] = useState(DEFAULT_FORM) // o que está nos campos
   const [applied, setApplied] = useState(null) // o que foi buscado; null = ainda não buscou
   const [page, setPage] = useState(1)
@@ -243,15 +243,6 @@ export default function HomePage({ user, token, onOpenLists, onOpenWatchlist, on
       <div className="window-title">
         <h1 id="busca-titulo">Buscar filmes</h1>
       </div>
-
-      <nav className="menubar" aria-label="Menu principal">
-        <button type="button" onClick={onOpenWatchlist}>Watchlist</button>
-        <button type="button" onClick={onOpenLists}>Minhas listas</button>
-        <button type="button" onClick={onOpenHistory}>Meu histórico</button>
-        <button type="button" onClick={onOpenSubscription}>Assinatura</button>
-        <button type="button" onClick={onOpenProfile}>Meu perfil</button>
-        <button type="button" onClick={onLogout}>Sair</button>
-      </nav>
 
       {browsing && home.status === 'ready' && home.data.featured && (
         <Hero movie={home.data.featured} onSearch={openHomeTitle} onOpen={onOpenMovie} />

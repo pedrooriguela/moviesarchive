@@ -7,6 +7,9 @@ public class ListResponseDto
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
     public bool IsPublic { get; set; }
+
+    // A watchlist aparece junto das listas, mas não pode ser renomeada nem excluída
+    public bool IsWatchlist { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public List<ListItemResponseDto> Items { get; set; } = new();
 }

@@ -4,7 +4,7 @@ namespace MoviesArchive.Domain.Models.Recommendations;
 public record ViewerSignals(
     IReadOnlyDictionary<Guid, int> WatchCounts,  // filme -> quantas vezes a pessoa deu play (WatchHistory)
     IReadOnlyDictionary<Guid, decimal> Ratings,  // filme -> nota que a pessoa deu, de 0,5 a 5 (Reviews)
-    IReadOnlySet<Guid> Watchlist)                // filmes guardados para ver depois (Watchlist)
+    IReadOnlySet<Guid> Watchlist)                // filmes guardados para ver depois (lista Watchlist)
 {
     public bool IsEmpty => WatchCounts.Count == 0 && Ratings.Count == 0 && Watchlist.Count == 0;
 

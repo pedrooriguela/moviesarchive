@@ -49,10 +49,34 @@ public class MovieListRepository : IMovieListRepository
 
     public async Task<List<MovieList>> GetVisibleByUserIdAsync(Guid ownerId, Guid requesterId)
     {
+        // A watchlist vem sempre primeiro; as outras, da mais nova para a mais antiga
         return await VisibleTo(requesterId)
             .Where(list => list.UserId == ownerId)
-            .OrderByDescending(list => list.CreatedAt)
+            .OrderByDescending(list => list.IsWatchlist)
+            .ThenByDescending(list => list.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<MovieList> GetOrCreateWatchlistAsync(Guid userId)
+    {
+        var existing = await ListsWithItems()
+            .FirstOrDefaultAsync(list => list.UserId == userId && list.IsWatchlist);
+        if (existing != null)
+            return existing;
+
+        var watchlist = MovieList.Builder.CreateWatchlist(userId);
+        try
+        {
+            await AddAsync(watchlist);
+            return watchlist;
+        }
+        catch (DbUpdateException)
+        {
+            // Outra requisição criou a watchlist ao mesmo tempo (índice único por usuário): usa a dela
+            _dbContext.Entry(watchlist).State = EntityState.Detached;
+            return await ListsWithItems()
+                .FirstAsync(list => list.UserId == userId && list.IsWatchlist);
+        }
     }
 
     public async Task<bool> TitleExistsAsync(Guid userId, string title, Guid? ignoredListId = null)

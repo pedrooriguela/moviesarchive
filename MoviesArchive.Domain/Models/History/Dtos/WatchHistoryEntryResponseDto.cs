@@ -10,6 +10,9 @@ public class WatchHistoryEntryResponseDto
     public string? PosterUrl { get; set; }
     public DateTimeOffset WatchedAt { get; set; }
 
+    // Filme removido do catálogo pelo administrador: continua no histórico, mas a ficha não abre mais
+    public bool MovieRemoved { get; set; }
+
     // Só na resposta do play (POST /api/history): o vídeo que o player deve tocar
     public string? VideoUrl { get; set; }
 }

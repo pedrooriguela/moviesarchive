@@ -109,6 +109,30 @@ psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f data
 
 Filme sem `VideoUrl` aparece com o botão "Vídeo indisponível". O endereço do vídeo só é enviado ao front na resposta do play (`POST /api/history`), depois de a API conferir a assinatura.
 
+### 2.2.2. Administradores, remoção de filmes e watchlist em "Minhas listas" (uma vez só)
+
+Também uma única vez, por **uma pessoa do grupo**:
+
+```bash
+psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f database/2026-11-17_admin_e_watchlist_nas_listas.sql
+```
+
+O script:
+
+- cria `Users.IsAdmin` (perfil de administrador; pode haver mais de um);
+- cria `Movies.DeletedAt`: o administrador remove um filme e ele some da busca, das listas e da ficha, mas continua no histórico de quem já assistiu (e pode ser restaurado);
+- cria `Lists.IsWatchlist` e copia a watchlist de cada pessoa (tabela `Watchlist` antiga) para uma lista fixa chamada "Watchlist", que aparece em "Minhas listas" e não pode ser renomeada nem excluída. Quem já tinha uma lista comum chamada "Watchlist" fica com ela, renomeada para "Watchlist (lista)".
+
+Rodar de novo não quebra nada nem duplica a watchlist de ninguém. Depois, marque o **primeiro administrador** pelo nome de usuário:
+
+```sql
+UPDATE "Users" SET "IsAdmin" = true WHERE "Name" = 'seu_nome_de_usuario';
+```
+
+Os próximos administradores são adicionados por quem já é administrador, em **Meu perfil → Administração → Administradores**. Nessa tela também ficam as estatísticas de uso e o cadastro de filmes (inclusive o endereço do vídeo). Quem não é administrador recebe `403` nas rotas `/api/admin/*`.
+
+A tabela `Watchlist` antiga deixa de ser usada pela API. Quando **todo o grupo** já estiver com a versão nova, ela pode ser apagada com `database/2026-11-17_remover_tabela_watchlist.sql` (não tem volta).
+
 ### 2.3. Iniciar a API
 
 Ainda na pasta `MoviesArchive.Api`, inicie a aplicação:

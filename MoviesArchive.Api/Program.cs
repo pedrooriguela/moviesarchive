@@ -11,6 +11,8 @@ using System.Text;
 using System.Security.Claims;
 using MoviesArchive.Domain.Common;
 using MoviesArchive.Domain.Models.Users;
+using MoviesArchive.Api.Auth;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +64,10 @@ builder.Services.AddScoped<IWatchHistoryService, WatchHistoryService>();
 builder.Services.AddScoped<ViewerContext>();
 builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 builder.Services.AddScoped<ISubscriptionService, SubscriptionService>();
+builder.Services.AddScoped<IMovieAdminService, MovieAdminService>();
+builder.Services.AddScoped<IPlatformStatsRepository, PlatformStatsRepository>();
+builder.Services.AddScoped<IPlatformStatsService, PlatformStatsService>();
+builder.Services.AddScoped<IAuthorizationHandler, AdminRequirementHandler>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
@@ -72,7 +78,11 @@ builder.Services.AddCors(options =>
               .AllowCredentials());
 });
 
-builder.Services.AddAuthorization();
+// Endpoints do painel do administrador: [Authorize(Policy = AdminPolicy.Name)]
+builder.Services.AddAuthorization(options =>
+    options.AddPolicy(AdminPolicy.Name, policy => policy
+        .RequireAuthenticatedUser()
+        .AddRequirements(new AdminRequirement())));
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();          
 

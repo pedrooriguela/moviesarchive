@@ -3,7 +3,6 @@ using MoviesArchive.Domain.Models.Users;
 using MoviesArchive.Domain.Models.Movies;
 using MoviesArchive.Domain.Models.Reviews;
 using MoviesArchive.Domain.Models.Lists;
-using MoviesArchive.Domain.Models.Watchlist;
 using MoviesArchive.Domain.Models.History;
 using MoviesArchive.Domain.Models.Plans;
 using MoviesArchive.Domain.Models.Subscriptions;
@@ -47,7 +46,6 @@ public class MoviesArchiveDbContext : DbContext
 
     public DbSet<ListMovie> ListMovies => Set<ListMovie>();
 
-    public DbSet<WatchlistItem> Watchlist => Set<WatchlistItem>();
     public DbSet<WatchHistoryEntry> WatchHistory => Set<WatchHistoryEntry>();
 
     public DbSet<Plan> Plans => Set<Plan>();
@@ -78,20 +76,6 @@ public class MoviesArchiveDbContext : DbContext
             .Property(review => review.Rating)
             .HasColumnType("numeric(2,1)");
 
-        modelBuilder.Entity<WatchlistItem>()
-            .ToTable("Watchlist")
-            .HasKey(item => new { item.UserId, item.MovieId });
-
-        modelBuilder.Entity<WatchlistItem>()
-            .HasOne<User>()
-            .WithMany()
-            .HasForeignKey(item => item.UserId);
-
-        modelBuilder.Entity<WatchlistItem>()
-            .HasOne<Movie>()
-            .WithMany()
-            .HasForeignKey(item => item.MovieId);
-
         modelBuilder.Entity<MovieList>()
             .HasOne<User>()
             .WithMany()
@@ -105,6 +89,12 @@ public class MoviesArchiveDbContext : DbContext
         modelBuilder.Entity<MovieList>()
             .HasIndex(list => new { list.UserId, list.Title })
             .IsUnique();
+
+        // Uma watchlist por usuário (ver database/2026-11-17_admin_e_watchlist_nas_listas.sql)
+        modelBuilder.Entity<MovieList>()
+            .HasIndex(list => list.UserId)
+            .IsUnique()
+            .HasFilter("\"IsWatchlist\"");
 
         modelBuilder.Entity<ListMovie>()
             .HasKey(item => new { item.ListId, item.MovieId });
@@ -192,12 +182,18 @@ public class MoviesArchiveDbContext : DbContext
         // ---- Classificação indicativa: menores não veem filmes acima da própria idade em
         // nenhuma consulta (busca, prateleiras, ficha, avaliações, watchlist, listas, histórico, play).
         // Um filme escondido se comporta como inexistente.
+        // ---- Filmes removidos pelo administrador também somem de todas as consultas, menos do
+        // histórico (WatchHistoryRepository desliga só o filtro Removed) e do painel do administrador.
         modelBuilder.Entity<Movie>()
-            .HasQueryFilter(movie => ViewerMaxAgeRating == null || movie.AgeRating <= ViewerMaxAgeRating);
+            .HasQueryFilter(MovieQueryFilters.AgeRating,
+                movie => ViewerMaxAgeRating == null || movie.AgeRating <= ViewerMaxAgeRating)
+            .HasQueryFilter(MovieQueryFilters.Removed, movie => movie.DeletedAt == null);
 
-        // Itens que apontam para um filme escondido também somem, e as contagens batem
+        // Itens que apontam para um filme escondido ou removido também somem, e as contagens batem.
+        // A linha continua na lista: se o administrador restaurar o filme, ele volta a aparecer.
         modelBuilder.Entity<ListMovie>()
-            .HasQueryFilter(item => ViewerMaxAgeRating == null || item.Movie!.AgeRating <= ViewerMaxAgeRating);
+            .HasQueryFilter(item => item.Movie!.DeletedAt == null &&
+                (ViewerMaxAgeRating == null || item.Movie!.AgeRating <= ViewerMaxAgeRating));
 
         modelBuilder.Entity<WatchHistoryEntry>()
             .HasQueryFilter(entry => ViewerMaxAgeRating == null || entry.Movie!.AgeRating <= ViewerMaxAgeRating);

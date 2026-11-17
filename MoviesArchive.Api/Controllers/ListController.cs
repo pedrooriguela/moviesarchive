@@ -35,6 +35,10 @@ public class ListController : Controller
         {
             return Conflict(new { field = "title", message = ex.Message });
         }
+        catch (ReservedListTitleException ex)
+        {
+            return Conflict(new { field = "title", message = ex.Message });
+        }
     }
 
     [HttpGet("api/lists/me")]
@@ -101,6 +105,14 @@ public class ListController : Controller
         {
             return Conflict(new { field = "title", message = ex.Message });
         }
+        catch (ReservedListTitleException ex)
+        {
+            return Conflict(new { field = "title", message = ex.Message });
+        }
+        catch (WatchlistLockedException ex)
+        {
+            return Conflict(new { field = "title", code = "watchlist-locked", message = ex.Message });
+        }
     }
 
     [HttpDelete("api/lists/{listId:guid}")]
@@ -122,6 +134,10 @@ public class ListController : Controller
         catch (ListAccessDeniedException ex)
         {
             return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+        catch (WatchlistLockedException ex)
+        {
+            return Conflict(new { code = "watchlist-locked", message = ex.Message });
         }
     }
 

@@ -90,7 +90,8 @@ public class UserController : Controller
             Name = user.Name,
             Email = user.Email,
             PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
-            BirthDate = user.BirthDate
+            BirthDate = user.BirthDate,
+            IsAdmin = user.IsAdmin
         });
     }
 
@@ -155,7 +156,8 @@ public class UserController : Controller
             Name = user!.Name,
             Email = user.Email,
             PhotoUrl = GetPhotoUrl(user.Id, user.PhotoData != null),
-            BirthDate = user.BirthDate
+            BirthDate = user.BirthDate,
+            IsAdmin = user.IsAdmin
         });
     }
 
