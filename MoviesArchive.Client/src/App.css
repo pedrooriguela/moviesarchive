@@ -3422,3 +3422,26 @@ form {
     padding-left: 10px;
   }
 }
+
+/* ===== Recomendações e filmes vistos ===== */
+/* Marca "Visto" no pôster: âmbar, para se distinguir da arte */
+.poster-flag-watched {
+  background: var(--amber);
+  color: var(--film);
+}
+
+/* Motivo da recomendação, abaixo dos dados do filme */
+.movie-card-reason {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 0.75rem;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+
+.movie-heading .badge-watched {
+  align-self: flex-start;
+  margin-top: 6px;
+  background: var(--amber);
+  color: var(--film);
+}

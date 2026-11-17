@@ -227,6 +227,7 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
             <div className="movie-heading">
               <h2 className="movie-title">{movie.title}</h2>
               {facts && <p className="movie-facts">{facts}</p>}
+              {movie.watched && <span className="badge badge-watched">Você já assistiu</span>}
             </div>
 
             {/* Mesma média e contagem da seção "Avaliações dos espectadores" */}
