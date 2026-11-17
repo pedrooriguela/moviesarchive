@@ -1,5 +1,6 @@
 ﻿using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
+using MoviesArchive.Domain.Models.Auth;
 using MoviesArchive.Domain.Models.Users;
 using MoviesArchive.Domain.Models.Users.Dtos;
 
@@ -8,16 +9,16 @@ public class UserLoginService : IUserLoginService
 {
     private readonly IUserRepository _userRepository;
     private readonly IPasswordHasherService _passwordHasherService;
-    private readonly IJwtService _jwtService;
+    private readonly IAuthTokenService _authTokenService;
 
     public UserLoginService(
         IUserRepository userRepository,
         IPasswordHasherService passwordHasherService,
-        IJwtService jwtService)
+        IAuthTokenService authTokenService)
     {
         _userRepository = userRepository;
         _passwordHasherService = passwordHasherService;
-        _jwtService = jwtService;
+        _authTokenService = authTokenService;
     }
 
     public async Task CreateAccountAsync(CreateUserRequestDto createUserRequestDto)
@@ -46,7 +47,8 @@ public class UserLoginService : IUserLoginService
         await _userRepository.AddAsync(newUser);
     }
 
-    public async Task<string> LogInAsync(LogInUserRequestDto logInUserRequestDto)
+    // JWT curto + refresh token (que o controller grava num cookie httpOnly)
+    public async Task<AuthTokens> LogInAsync(LogInUserRequestDto logInUserRequestDto)
     {
         var user = await _userRepository.GetByUsernameAsync(logInUserRequestDto.Name);
 
@@ -56,7 +58,7 @@ public class UserLoginService : IUserLoginService
         if(!_passwordHasherService.Compare(user, user.Password, logInUserRequestDto.Password))
             throw new WrongUsernameOrPasswordException();
 
-        return _jwtService.GenerateToken(user);
+        return await _authTokenService.IssueAsync(user);
     }
 
 }

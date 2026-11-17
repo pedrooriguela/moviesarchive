@@ -3,6 +3,8 @@
 //   POST /api/history     -> { id, movieId, movieTitle, releaseYear, posterUrl, watchedAt }
 //   GET  /api/history/me  -> { items, page, pageSize, totalCount, totalPages }
 import { getUserFromToken } from '../services/token.js'
+import { ApiError } from '../services/api.js'
+import { mockVideoUrlOf } from './movies.js'
 
 function storageKey(token) {
   return `moviesarchive.mock-history.${getUserFromToken(token)?.id ?? 'anonimo'}`
@@ -25,8 +27,15 @@ function writeEntries(token, entries) {
 }
 
 export function mockRecordWatch(movie, token) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     setTimeout(() => {
+      // Como a API: sem vídeo não há play, e nada vai para o histórico
+      const videoUrl = mockVideoUrlOf(movie.id)
+      if (!videoUrl) {
+        reject(new ApiError('Este filme ainda não tem vídeo no acervo.', { status: 409, code: 'video-unavailable' }))
+        return
+      }
+
       const entry = {
         id: crypto.randomUUID(),
         movieId: movie.id,
@@ -36,7 +45,7 @@ export function mockRecordWatch(movie, token) {
         watchedAt: new Date().toISOString(),
       }
       writeEntries(token, [entry, ...readEntries(token)])
-      resolve(entry)
+      resolve({ ...entry, videoUrl })
     }, 300)
   })
 }

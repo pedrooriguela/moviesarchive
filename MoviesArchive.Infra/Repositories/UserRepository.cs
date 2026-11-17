@@ -124,6 +124,10 @@ public class UserRepository : IUserRepository
             $"DELETE FROM \"UserFavorites\" WHERE \"UserId\" = {id}");
         await _dbContext.Database.ExecuteSqlInterpolatedAsync(
             $"DELETE FROM \"UserFollowers\" WHERE \"FollowerId\" = {id} OR \"FollowingId\" = {id}");
+        // Ninguém mais entra nesta conta: as sessões abertas acabam
+        await _dbContext.RefreshTokens
+            .Where(token => token.UserId == id)
+            .ExecuteDeleteAsync();
 
         // O e-mail precisa continuar único, por isso carrega o id
         user.Name = ReservedUserNames.Removed;

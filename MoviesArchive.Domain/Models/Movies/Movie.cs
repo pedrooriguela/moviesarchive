@@ -28,6 +28,9 @@ public class Movie : Entity
 
     public int? RuntimeMinutes { get; set; }
 
+    // Endereço do arquivo de vídeo (MP4/WebM) tocado pelo player; sem ele, o filme não tem play
+    public string? VideoUrl { get; set; }
+
     public class Builder
     {
         public static Movie Create(string title, DateOnly? releaseDate) =>

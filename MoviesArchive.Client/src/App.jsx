@@ -14,8 +14,8 @@ import HistoryPage from './pages/HistoryPage.jsx'
 import PlansPage from './pages/PlansPage.jsx'
 import SubscriptionPage from './pages/SubscriptionPage.jsx'
 import Dialog from './components/Dialog.jsx'
-import { clearToken, getUserFromToken, loadToken, saveToken } from './services/token.js'
-import { getPhotoSrc } from './services/api.js'
+import { clearToken, getUserFromToken, isTokenExpiring, loadToken, saveToken } from './services/token.js'
+import { getPhotoSrc, logout, onSessionChange, refreshSession } from './services/api.js'
 import './App.css'
 
 // Mesma rota usada pelo back-end ao montar o link do e-mail (PasswordResetService)
@@ -40,6 +40,11 @@ const PLANS_BACK_LABELS = { movie: 'Voltar à ficha', subscription: 'Voltar à m
 
 function App() {
   const [token, setToken] = useState(() => loadToken())
+  // Ao abrir o site com o JWT vencido, tenta retomar a sessão pelo refresh token antes de decidir
+  const [restoring, setRestoring] = useState(() => {
+    const stored = loadToken()
+    return Boolean(stored && getUserFromToken(stored, { allowExpired: true }) && isTokenExpiring(stored))
+  })
   const [view, setView] = useState(initialRoute.view) // 'landing' | 'forgot' | 'reset'
   const [dialog, setDialog] = useState(null) // null | 'login' | 'signup' (só para visitantes)
   const [signUpHint, setSignUpHint] = useState('') // título que o visitante quis abrir
@@ -55,13 +60,42 @@ function App() {
   const [plansNotice, setPlansNotice] = useState('') // aviso no topo dos planos, ex.: vindo do play
   const [plansReturn, setPlansReturn] = useState('home') // para onde o "Voltar" dos planos leva
 
-  const user = getUserFromToken(token)
+  // O JWT vencido não encerra a sessão: o authFetch o renova. Quem encerra é o refresh token recusado.
+  const user = restoring ? null : getUserFromToken(token, { allowExpired: true })
   const activeUser = { ...user, ...profile }
 
-  // Remove token inválido/expirado do storage
+  // Remove do storage um token que nem dá para ler
   useEffect(() => {
-    if (token && !user) clearToken()
-  }, [token, user])
+    if (!restoring && token && !user) clearToken()
+  }, [restoring, token, user])
+
+  useEffect(() => {
+    if (!restoring) return
+    refreshSession()
+      .then((newToken) => setToken(newToken))
+      .catch(() => {
+        clearToken()
+        setToken(null)
+      })
+      .finally(() => setRestoring(false))
+  }, [restoring])
+
+  // JWT renovado no meio do uso, ou sessão encerrada (refresh token vencido ou revogado)
+  useEffect(
+    () =>
+      onSessionChange((event, newToken) => {
+        if (event === 'refreshed') {
+          setToken(newToken)
+          return
+        }
+        setToken(null)
+        setProfile(null)
+        setAuthenticatedView('home')
+        setView('landing')
+        setLandingNotice('Sua sessão expirou. Entre de novo para continuar.')
+      }),
+    [],
+  )
 
   // Tira o token da barra de endereço ao sair da tela de nova senha
   function leaveResetRoute() {
@@ -105,6 +139,7 @@ function App() {
   }
 
   function handleLogout() {
+    logout()
     clearToken()
     setToken(null)
     setProfile(null)
@@ -173,7 +208,7 @@ function App() {
               <div className="brand">Movies Archive</div>
           )}
 
-          {!user && view === 'landing' && (
+          {!user && !restoring && view === 'landing' && (
               <nav className="visitor-nav" aria-label="Acesso à conta">
                 <button type="button" className="btn-secondary" onClick={() => openLogin()}>
                   Entrar
@@ -212,6 +247,20 @@ function App() {
                 }}
                 onGoToForgotPassword={openForgotPassword}
             />
+        ) : restoring ? (
+            <section className="window home-window" aria-labelledby="sessao-titulo">
+              <div className="window-title">
+                <h1 id="sessao-titulo">Movies Archive</h1>
+              </div>
+              <div className="window-body">
+                <div className="progress" role="status">
+                  <div className="progress-track" aria-hidden="true">
+                    <span className="progress-bar" />
+                  </div>
+                  <span>Retomando sua sessão...</span>
+                </div>
+              </div>
+            </section>
         ) : user ? (
             authenticatedView === 'profile' ? (
                 <ProfilePage

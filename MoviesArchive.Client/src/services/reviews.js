@@ -10,7 +10,7 @@ export const MAX_COMMENT_LENGTH = 2000
 
 /** GET /api/movies/{id}/reviews — página de avaliações + média e histograma */
 export function getMovieReviews(movieId, { page = 1, pageSize = 10 } = {}, token) {
-  if (USE_MOCKS) return mock.mockGetMovieReviews(movieId, { page, pageSize })
+  if (USE_MOCKS) return mock.mockGetMovieReviews(movieId, { page, pageSize }, token)
   const params = new URLSearchParams({ page: String(page), pageSize: String(pageSize) })
   return authFetch(`/api/movies/${movieId}/reviews?${params}`, token)
 }
@@ -47,6 +47,44 @@ export function getMyWatchlist(token) {
 export function setInWatchlist(movieId, inWatchlist, token) {
   if (USE_MOCKS) return mock.mockSetInWatchlist(movieId, inWatchlist, token)
   return authFetch(`/api/watchlist/${movieId}`, token, { method: inWatchlist ? 'PUT' : 'DELETE' })
+}
+
+// ---- Respostas e curtidas ----
+
+export const MAX_REPLY_LENGTH = 1000
+
+/** GET /api/reviews/{id}/replies — conversa inteira; a árvore sai do parentReplyId */
+export function getReplies(reviewId, token) {
+  if (USE_MOCKS) return mock.mockGetReplies(reviewId, token)
+  return authFetch(`/api/reviews/${reviewId}/replies`, token)
+}
+
+/** POST /api/reviews/{id}/replies — parentReplyId preenchido quando é resposta a uma resposta */
+export function addReply(reviewId, { comment, parentReplyId = null }, token) {
+  if (USE_MOCKS) return mock.mockAddReply(reviewId, { comment, parentReplyId }, token)
+  return authFetch(`/api/reviews/${reviewId}/replies`, token, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ comment: comment.trim(), parentReplyId }),
+  })
+}
+
+/** DELETE /api/replies/{id} — só o autor */
+export function deleteReply(replyId, token) {
+  if (USE_MOCKS) return mock.mockDeleteReply(replyId, token)
+  return authFetch(`/api/replies/${replyId}`, token, { method: 'DELETE' })
+}
+
+/** PUT/DELETE /api/reviews/{id}/like — devolve { likeCount, likedByMe } */
+export function setReviewLike(reviewId, liked, token) {
+  if (USE_MOCKS) return mock.mockSetReviewLike(reviewId, liked, token)
+  return authFetch(`/api/reviews/${reviewId}/like`, token, { method: liked ? 'PUT' : 'DELETE' })
+}
+
+/** PUT/DELETE /api/replies/{id}/like — devolve { likeCount, likedByMe } */
+export function setReplyLike(replyId, liked, token) {
+  if (USE_MOCKS) return mock.mockSetReplyLike(replyId, liked, token)
+  return authFetch(`/api/replies/${replyId}/like`, token, { method: liked ? 'PUT' : 'DELETE' })
 }
 
 /** 3.5 -> "3,5" */

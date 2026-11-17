@@ -30,7 +30,8 @@ public class ReviewController : Controller
     {
         try
         {
-            return Ok(await _reviewService.GetMovieReviewsAsync(movieId, Math.Max(1, page), Math.Clamp(pageSize, 1, MaxPageSize)));
+            return Ok(await _reviewService.GetMovieReviewsAsync(
+                movieId, Math.Max(1, page), Math.Clamp(pageSize, 1, MaxPageSize), GetAuthenticatedUserId()));
         }
         catch (MovieNotFoundException ex)
         {

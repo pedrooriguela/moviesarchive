@@ -33,11 +33,18 @@ public class WatchHistoryService : IWatchHistoryService
         var movie = await _movieRepository.GetByIdAsync(request.MovieId)
             ?? throw new MovieNotFoundException();
 
+        // Sem arquivo de vídeo não há o que assistir, e nada vai para o histórico
+        if (string.IsNullOrWhiteSpace(movie.VideoUrl))
+            throw new VideoUnavailableException();
+
         var entry = WatchHistoryEntry.Builder.Create(userId, movie.Id);
 
         await _watchHistoryRepository.AddAsync(entry);
 
-        return ToResponse(entry, movie);
+        var response = ToResponse(entry, movie);
+        // O endereço do vídeo só sai daqui, depois de conferida a assinatura
+        response.VideoUrl = movie.VideoUrl;
+        return response;
     }
 
     public async Task<PagedResponseDto<WatchHistoryEntryResponseDto>> GetByUserIdAsync(Guid userId, int page, int pageSize)
