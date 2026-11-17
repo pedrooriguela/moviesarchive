@@ -15,7 +15,7 @@ function valueOrDash(value) {
   return value ? value : 'Não informado'
 }
 
-export default function MoviePage({ movieId, token, user, backLabel, onBack, onPlay, onRequirePlan }) {
+export default function MoviePage({ movieId, token, user, backLabel, onBack, onPlay, onRequirePlan, focus }) {
   const [state, setState] = useState({ status: 'loading', movie: null, error: '' })
   const [reloadKey, setReloadKey] = useState(0)
   const [mine, setMine] = useState({ status: 'loading', data: null, error: '' })
@@ -297,6 +297,7 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
             error={reviews.error}
             userId={user?.id}
             token={token}
+            focus={focus}
             loadingMore={loadingMore}
             onLoadMore={loadMoreReviews}
             onRetry={refreshReviews}

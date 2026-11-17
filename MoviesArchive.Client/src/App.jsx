@@ -14,6 +14,7 @@ import HistoryPage from './pages/HistoryPage.jsx'
 import PlansPage from './pages/PlansPage.jsx'
 import SubscriptionPage from './pages/SubscriptionPage.jsx'
 import Dialog from './components/Dialog.jsx'
+import NotificationBell from './components/NotificationBell.jsx'
 import { clearToken, getUserFromToken, isTokenExpiring, loadToken, saveToken } from './services/token.js'
 import { getPhotoSrc, logout, onSessionChange, refreshSession } from './services/api.js'
 import './App.css'
@@ -55,6 +56,8 @@ function App() {
   const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history' | 'plans' | 'subscription'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
   const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
+  // Avaliação/resposta a destacar ao abrir a ficha por uma notificação ({ reviewId, replyId, nonce })
+  const [movieFocus, setMovieFocus] = useState(null)
   const [playingMovie, setPlayingMovie] = useState(null) // filme aberto no player
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
   const [plansNotice, setPlansNotice] = useState('') // aviso no topo dos planos, ex.: vindo do play
@@ -158,9 +161,10 @@ function App() {
     setHomeVisit((count) => count + 1)
   }
 
-  function openMovie(movieId, origin = 'home') {
+  function openMovie(movieId, origin = 'home', focus = null) {
     setSelectedMovieId(movieId)
     setMovieOrigin(origin)
+    setMovieFocus(focus)
     setAuthenticatedView('movie')
     window.scrollTo(0, 0)
   }
@@ -220,6 +224,17 @@ function App() {
           )}
 
           {user && view !== 'reset' && (
+              <div className="header-actions">
+              <NotificationBell
+                  token={token}
+                  onOpen={(notification) =>
+                      openMovie(notification.movieId, 'home', {
+                        reviewId: notification.reviewId,
+                        replyId: notification.replyId,
+                        nonce: notification.id,
+                      })
+                  }
+              />
               <button
                   type="button"
                   className="profile-menu-button"
@@ -233,6 +248,7 @@ function App() {
                     <span>{activeUser.name?.trim().charAt(0).toUpperCase() || '?'}</span>
                 )}
               </button>
+              </div>
           )}
         </header>
 
@@ -271,8 +287,9 @@ function App() {
                 />
             ) : authenticatedView === 'movie' ? (
                 <MoviePage
-                    key={selectedMovieId}
+                    key={`${selectedMovieId}-${movieFocus?.nonce ?? ''}`}
                     movieId={selectedMovieId}
+                    focus={movieFocus}
                     token={token}
                     user={activeUser}
                     backLabel={MOVIE_BACK_LABELS[movieOrigin] ?? 'Voltar ao início'}

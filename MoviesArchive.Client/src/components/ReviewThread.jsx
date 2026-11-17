@@ -80,7 +80,7 @@ function ReplyForm({ id, label, placeholder, autoFocus, onSubmit, onCancel }) {
   )
 }
 
-function ReplyNode({ node, depth, parentName, userId, token, replyingTo, setReplyingTo, onReply, onDelete }) {
+function ReplyNode({ node, depth, parentName, userId, token, focusReplyId, replyingTo, setReplyingTo, onReply, onDelete }) {
   const { reply, children } = node
   const isMine = reply.userId === userId
   const formId = `responder-${reply.id}`
@@ -97,7 +97,10 @@ function ReplyNode({ node, depth, parentName, userId, token, replyingTo, setRepl
   }
 
   return (
-    <li className={isMine ? 'reply is-mine' : 'reply'}>
+    <li
+      id={`resposta-${reply.id}`}
+      className={`${isMine ? 'reply is-mine' : 'reply'}${reply.id === focusReplyId ? ' is-focused' : ''}`}
+    >
       <div className="reply-card">
         {reply.isDeleted ? (
           <span className="reply-avatar-gap" aria-hidden="true" />
@@ -167,6 +170,7 @@ function ReplyNode({ node, depth, parentName, userId, token, replyingTo, setRepl
               parentName={reply.isDeleted ? null : reply.userName}
               userId={userId}
               token={token}
+              focusReplyId={focusReplyId}
               replyingTo={replyingTo}
               setReplyingTo={setReplyingTo}
               onReply={onReply}
@@ -181,7 +185,7 @@ function ReplyNode({ node, depth, parentName, userId, token, replyingTo, setRepl
 
 // Conversa de uma avaliação: respostas, respostas às respostas, curtidas e o campo para responder.
 // onCountChange recebe o total de respostas visíveis (sem as excluídas).
-export default function ReviewThread({ id, review, token, userId, onCountChange }) {
+export default function ReviewThread({ id, review, token, userId, focusReplyId, onCountChange }) {
   const [state, setState] = useState({ status: 'loading', replies: [], error: '' })
   const [reloadKey, setReloadKey] = useState(0)
   const [replyingTo, setReplyingTo] = useState(null)
@@ -202,6 +206,12 @@ export default function ReviewThread({ id, review, token, userId, onCountChange 
   }, [review.id, token, reloadKey])
 
   const tree = useMemo(() => buildTree(state.replies), [state.replies])
+
+  // Aberta por uma notificação: rola até a resposta citada assim que a conversa carrega
+  useEffect(() => {
+    if (state.status !== 'ready' || !focusReplyId) return
+    document.getElementById(`resposta-${focusReplyId}`)?.scrollIntoView({ block: 'center' })
+  }, [state.status, focusReplyId])
 
   function updateReplies(replies) {
     setState({ status: 'ready', replies, error: '' })
@@ -268,6 +278,7 @@ export default function ReviewThread({ id, review, token, userId, onCountChange 
               parentName={review.userName}
               userId={userId}
               token={token}
+              focusReplyId={focusReplyId}
               replyingTo={replyingTo}
               setReplyingTo={setReplyingTo}
               onReply={handleReply}

@@ -11,6 +11,7 @@ import {
   withEngagement,
   withReplyLikes,
 } from './reviewStore.js'
+import { pushNotification, removeLikeNotification, removeNotificationsForReply } from './notifications.js'
 import { getUserFromToken } from '../services/token.js'
 
 const watchlistByUser = new Map() // userId -> [{ movieId, addedAt }]
@@ -161,6 +162,18 @@ export function mockAddReply(reviewId, { comment, parentReplyId = null }, token)
     createdAt: new Date().toISOString(),
   }
   repliesOf(reviewId).push(reply)
+
+  // Avisa quem foi respondido: o autor da resposta de cima ou, se não houver, o da avaliação
+  const review = findReview(reviewId)
+  const parent = parentReplyId ? findReply(parentReplyId) : null
+  pushNotification({
+    recipientId: parent ? parent.userId : review.userId,
+    actor: user,
+    type: parent ? 'ReplyReplied' : 'ReviewReplied',
+    movieId: review.movieId,
+    reviewId,
+    replyId: reply.id,
+  })
   return delay(withReplyLikes(reply, user.id), 250)
 }
 
@@ -171,6 +184,7 @@ export function mockDeleteReply(replyId, token) {
 
   const replies = repliesOf(reply.reviewId)
   const hasChildren = (id) => replies.some((item) => item.parentReplyId === id)
+  removeNotificationsForReply(reply.id)
 
   if (hasChildren(reply.id)) {
     reply.isDeleted = true
@@ -189,11 +203,19 @@ export function mockDeleteReply(replyId, token) {
 }
 
 export function mockSetReviewLike(reviewId, liked, token) {
-  if (!findReview(reviewId)) return fail('Avaliação não encontrada.')
+  const review = findReview(reviewId)
+  if (!review) return fail('Avaliação não encontrada.')
   const likes = reviewLikesOf(reviewId)
-  const userId = currentUser(token).id
+  const user = currentUser(token)
+  const userId = user.id
+  const changed = likes.has(userId) !== liked
   if (liked) likes.add(userId)
   else likes.delete(userId)
+  if (changed && liked) {
+    pushNotification({ recipientId: review.userId, actor: user, type: 'ReviewLiked', movieId: review.movieId, reviewId })
+  } else if (changed) {
+    removeLikeNotification({ actorId: userId, type: 'ReviewLiked', reviewId })
+  }
   return delay({ likeCount: likes.size, likedByMe: liked }, 150)
 }
 
@@ -201,8 +223,16 @@ export function mockSetReplyLike(replyId, liked, token) {
   const reply = findReply(replyId)
   if (!reply || reply.isDeleted) return fail('Resposta não encontrada.')
   const likes = replyLikesOf(replyId)
-  const userId = currentUser(token).id
+  const user = currentUser(token)
+  const userId = user.id
+  const changed = likes.has(userId) !== liked
   if (liked) likes.add(userId)
   else likes.delete(userId)
+  const review = findReview(reply.reviewId)
+  if (changed && liked) {
+    pushNotification({ recipientId: reply.userId, actor: user, type: 'ReplyLiked', movieId: review.movieId, reviewId: review.id, replyId })
+  } else if (changed) {
+    removeLikeNotification({ actorId: userId, type: 'ReplyLiked', reviewId: review.id, replyId })
+  }
   return delay({ likeCount: likes.size, likedByMe: liked }, 150)
 }

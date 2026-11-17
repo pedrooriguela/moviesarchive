@@ -19,6 +19,8 @@ a:focus-visible {
   --bulb: radial-gradient(circle, #fff6d8 0 1px, var(--amber) 1.6px, rgba(242, 182, 48, 0.28) 3px, transparent 4.5px);
   --bulb-off: radial-gradient(circle, #5a4310 0 1.6px, transparent 2.4px);
   position: relative;
+  /* Acima do conteúdo da página, para o painel de notificações ficar por cima */
+  z-index: 20;
   isolation: isolate;
   width: min(100%, 960px);
   display: flex;
@@ -3420,5 +3422,236 @@ form {
 
   .thread-list.is-nested {
     padding-left: 10px;
+  }
+}
+
+/* ---------- Notificações ---------- */
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notifications {
+  position: relative;
+}
+
+.notification-button {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--panel);
+  color: var(--text-h);
+  cursor: pointer;
+  box-shadow: var(--raised);
+}
+
+.notification-button:active,
+.notification-button.is-open {
+  box-shadow: var(--sunken);
+}
+
+.notification-button.is-open .pixel-bell {
+  transform: translate(1px, 1px);
+}
+
+.pixel-bell {
+  width: 22px;
+  height: auto;
+  fill: currentColor;
+}
+
+/* Contador: etiqueta vermelha com contorno, como os avisos de bandeja */
+.notification-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  background: #c00000;
+  color: #ffffff;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  line-height: 1;
+  box-shadow: 0 0 0 1px #000000, inset 1px 1px #ff6b6b;
+  pointer-events: none;
+}
+
+.notification-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  width: min(380px, calc(100vw - 32px));
+  padding: 3px;
+  background: var(--panel);
+  box-shadow: var(--raised), 0 0 0 1px #000000, 4px 4px 0 rgba(0, 0, 0, 0.35);
+  color: var(--text);
+  text-align: left;
+}
+
+.notification-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 2px 6px;
+  background: var(--title-bar);
+  color: #ffffff;
+}
+
+.notification-panel-title h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 400;
+  line-height: 1.2;
+}
+
+.link-button.notification-mark-all {
+  color: #ffffff;
+  font-size: 0.78rem;
+}
+
+.link-button.notification-mark-all:focus-visible {
+  outline-color: #ffffff;
+}
+
+.notification-list {
+  max-height: min(420px, 60svh);
+  overflow-y: auto;
+  margin: 3px 0 0;
+  padding: 0;
+  list-style: none;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+}
+
+.notification-list li + li {
+  border-top: 1px dotted #808080;
+}
+
+.notification-item {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.notification-item:hover {
+  background: #eef0ff;
+}
+
+.notification-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -4px;
+}
+
+/* Não lida: faixa âmbar e fundo levemente amarelado */
+.notification-item.is-unread {
+  border-left-color: var(--amber);
+  background: #fffaea;
+}
+
+.notification-item.is-unread:hover {
+  background: #fff2c8;
+}
+
+.notification-body {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notification-text cite {
+  font-style: italic;
+  font-weight: 700;
+}
+
+.notification-excerpt {
+  overflow: hidden;
+  color: var(--text-soft);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: var(--text-soft);
+}
+
+.notification-empty {
+  margin: 3px 0 0;
+  padding: 16px 14px;
+  background: var(--paper);
+  box-shadow: var(--sunken);
+  font-size: 0.85rem;
+  color: var(--text-soft);
+}
+
+.notification-empty p {
+  margin: 0 0 10px;
+}
+
+/* Avaliação ou resposta aberta por uma notificação: pisca em âmbar ao chegar */
+.review.is-focused,
+.reply.is-focused > .reply-card {
+  animation: focus-flash 2.4s steps(6, end) 1;
+}
+
+.reply.is-focused > .reply-card {
+  outline: 2px dotted var(--amber-deep);
+  outline-offset: 4px;
+}
+
+@keyframes focus-flash {
+  0%,
+  33%,
+  66% {
+    background: #ffe9a8;
+  }
+  16%,
+  50%,
+  100% {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .review.is-focused,
+  .reply.is-focused > .reply-card {
+    animation: none;
+    background: #fff2c8;
+  }
+}
+
+@media (max-width: 600px) {
+  .notifications {
+    position: static;
+  }
+
+  /* No celular o painel ocupa a largura do cabeçalho */
+  .notification-panel {
+    left: 0;
+    right: 0;
+    width: auto;
   }
 }

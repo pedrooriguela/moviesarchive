@@ -128,6 +128,10 @@ public class UserRepository : IUserRepository
         await _dbContext.RefreshTokens
             .Where(token => token.UserId == id)
             .ExecuteDeleteAsync();
+        // Avisos recebidos só interessavam à própria pessoa
+        await _dbContext.Notifications
+            .Where(notification => notification.UserId == id)
+            .ExecuteDeleteAsync();
 
         // O e-mail precisa continuar único, por isso carrega o id
         user.Name = ReservedUserNames.Removed;

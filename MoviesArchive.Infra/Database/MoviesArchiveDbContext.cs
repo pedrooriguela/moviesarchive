@@ -8,6 +8,7 @@ using MoviesArchive.Domain.Models.History;
 using MoviesArchive.Domain.Models.Plans;
 using MoviesArchive.Domain.Models.Subscriptions;
 using MoviesArchive.Domain.Models.Auth;
+using MoviesArchive.Domain.Models.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace MoviesArchive.Infra.Database;
@@ -39,6 +40,8 @@ public class MoviesArchiveDbContext : DbContext
     public DbSet<ReviewReplyLike> ReviewReplyLikes => Set<ReviewReplyLike>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<MovieList> Lists => Set<MovieList>();
 
@@ -160,6 +163,15 @@ public class MoviesArchiveDbContext : DbContext
             like.ToTable("ResponseLikes");
             like.HasKey(item => new { item.UserId, item.ReplyId });
             like.Property(item => item.ReplyId).HasColumnName("ResponseId");
+        });
+
+        // ---- Notificações de curtidas e respostas (ver database/2026-11-17_notificacoes.sql)
+        modelBuilder.Entity<Notification>(notification =>
+        {
+            notification.ToTable("Notifications");
+            notification.Property(item => item.Type).HasConversion<string>();
+            notification.Property(item => item.ReplyId).HasColumnName("ResponseId");
+            notification.HasIndex(item => new { item.UserId, item.CreatedAt });
         });
 
         // ---- Sessões: refresh tokens guardados como hash

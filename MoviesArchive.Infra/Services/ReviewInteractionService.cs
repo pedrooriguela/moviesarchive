@@ -1,5 +1,6 @@
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
+using MoviesArchive.Domain.Models.Notifications;
 using MoviesArchive.Domain.Models.Reviews;
 using MoviesArchive.Domain.Models.Reviews.Dtos;
 
@@ -9,13 +10,16 @@ public class ReviewInteractionService : IReviewInteractionService
 {
     private readonly IReviewInteractionRepository _interactionRepository;
     private readonly IMovieRepository _movieRepository;
+    private readonly INotificationRepository _notificationRepository;
 
     public ReviewInteractionService(
         IReviewInteractionRepository interactionRepository,
-        IMovieRepository movieRepository)
+        IMovieRepository movieRepository,
+        INotificationRepository notificationRepository)
     {
         _interactionRepository = interactionRepository;
         _movieRepository = movieRepository;
+        _notificationRepository = notificationRepository;
     }
 
     public async Task<List<ReplyResponseDto>> GetRepliesAsync(Guid reviewId, Guid? viewerId)
@@ -28,12 +32,13 @@ public class ReviewInteractionService : IReviewInteractionService
 
     public async Task<ReplyResponseDto> AddReplyAsync(Guid reviewId, Guid userId, CreateReplyRequestDto request)
     {
-        await GetVisibleReviewAsync(reviewId);
+        var review = await GetVisibleReviewAsync(reviewId);
 
         // Resposta a uma resposta: ela tem de ser desta avaliação e ainda existir
+        ReviewReply? parent = null;
         if (request.ParentReplyId is Guid parentId)
         {
-            var parent = await _interactionRepository.GetReplyAsync(parentId);
+            parent = await _interactionRepository.GetReplyAsync(parentId);
             if (parent == null || parent.ReviewId != reviewId)
                 throw new ReplyNotFoundException();
             if (parent.IsDeleted)
@@ -42,6 +47,14 @@ public class ReviewInteractionService : IReviewInteractionService
 
         var reply = ReviewReply.Builder.Create(reviewId, userId, request.ParentReplyId, request.Comment);
         await _interactionRepository.AddReplyAsync(reply);
+
+        // Avisa quem foi respondido: o autor da resposta de cima ou, se não houver, o da avaliação
+        await NotifyAsync(
+            recipientId: parent?.UserId ?? review.UserId,
+            actorId: userId,
+            type: parent != null ? NotificationType.ReplyReplied : NotificationType.ReviewReplied,
+            review,
+            replyId: reply.Id);
 
         var created = await _interactionRepository.GetReplyWithAuthorAsync(reply.Id, userId)
             ?? throw new ReplyNotFoundException();
@@ -57,6 +70,9 @@ public class ReviewInteractionService : IReviewInteractionService
             throw new ReplyNotFoundException();
         if (reply.UserId != userId)
             throw new ReplyForbiddenException();
+
+        // Os avisos sobre esta resposta (que ela foi escrita, curtidas) perdem o sentido
+        await _notificationRepository.DeleteForReplyAsync(reply.Id);
 
         if (await _interactionRepository.HasChildRepliesAsync(reply.Id))
         {
@@ -82,9 +98,16 @@ public class ReviewInteractionService : IReviewInteractionService
 
     public async Task<LikeStateDto> SetReviewLikeAsync(Guid reviewId, Guid userId, bool liked)
     {
-        await GetVisibleReviewAsync(reviewId);
+        var review = await GetVisibleReviewAsync(reviewId);
 
-        await _interactionRepository.SetReviewLikeAsync(userId, reviewId, liked);
+        if (await _interactionRepository.SetReviewLikeAsync(userId, reviewId, liked))
+        {
+            if (liked)
+                await NotifyAsync(review.UserId, userId, NotificationType.ReviewLiked, review, replyId: null);
+            else
+                await _notificationRepository.DeleteLikeAsync(userId, NotificationType.ReviewLiked, reviewId, null);
+        }
+
         return new LikeStateDto
         {
             LikeCount = await _interactionRepository.CountReviewLikesAsync(reviewId),
@@ -97,14 +120,31 @@ public class ReviewInteractionService : IReviewInteractionService
         var reply = await _interactionRepository.GetReplyAsync(replyId);
         if (reply == null || reply.IsDeleted)
             throw new ReplyNotFoundException();
-        await GetVisibleReviewAsync(reply.ReviewId);
+        var review = await GetVisibleReviewAsync(reply.ReviewId);
 
-        await _interactionRepository.SetReplyLikeAsync(userId, replyId, liked);
+        if (await _interactionRepository.SetReplyLikeAsync(userId, replyId, liked))
+        {
+            if (liked)
+                await NotifyAsync(reply.UserId, userId, NotificationType.ReplyLiked, review, replyId);
+            else
+                await _notificationRepository.DeleteLikeAsync(userId, NotificationType.ReplyLiked, review.Id, replyId);
+        }
+
         return new LikeStateDto
         {
             LikeCount = await _interactionRepository.CountReplyLikesAsync(replyId),
             LikedByMe = liked,
         };
+    }
+
+    // Ninguém é avisado das próprias ações
+    private Task NotifyAsync(Guid recipientId, Guid actorId, NotificationType type, Review review, Guid? replyId)
+    {
+        if (recipientId == actorId)
+            return Task.CompletedTask;
+
+        return _notificationRepository.AddAsync(
+            Notification.Builder.Create(recipientId, actorId, type, review.MovieId, review.Id, replyId));
     }
 
     // A avaliação precisa existir e o filme precisa estar visível para quem pede

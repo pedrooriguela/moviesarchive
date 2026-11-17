@@ -19,9 +19,10 @@ public interface IReviewInteractionRepository
     // Curtidas e quantidade de respostas de várias avaliações de uma vez
     Task<Dictionary<Guid, ReviewEngagement>> GetReviewEngagementAsync(IReadOnlyCollection<Guid> reviewIds, Guid? viewerId);
 
-    // Idempotentes: curtir de novo ou descurtir o que não foi curtido não dá erro
-    Task SetReviewLikeAsync(Guid userId, Guid reviewId, bool liked);
+    // Idempotentes: curtir de novo ou descurtir o que não foi curtido não dá erro.
+    // Devolvem true quando algo mudou (para avisar o autor só na curtida nova).
+    Task<bool> SetReviewLikeAsync(Guid userId, Guid reviewId, bool liked);
     Task<int> CountReviewLikesAsync(Guid reviewId);
-    Task SetReplyLikeAsync(Guid userId, Guid replyId, bool liked);
+    Task<bool> SetReplyLikeAsync(Guid userId, Guid replyId, bool liked);
     Task<int> CountReplyLikesAsync(Guid replyId);
 }

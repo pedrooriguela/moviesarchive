@@ -88,7 +88,7 @@ public class ReviewInteractionRepository : IReviewInteractionRepository
             row => new ReviewEngagement(row.LikeCount, row.LikedByViewer, row.ReplyCount));
     }
 
-    public async Task SetReviewLikeAsync(Guid userId, Guid reviewId, bool liked)
+    public async Task<bool> SetReviewLikeAsync(Guid userId, Guid reviewId, bool liked)
     {
         var existing = await _dbContext.ReviewLikes
             .FirstOrDefaultAsync(like => like.UserId == userId && like.ReviewId == reviewId);
@@ -98,15 +98,15 @@ public class ReviewInteractionRepository : IReviewInteractionRepository
         else if (!liked && existing != null)
             _dbContext.ReviewLikes.Remove(existing);
         else
-            return;
+            return false;
 
-        await SaveIgnoringDuplicateAsync();
+        return await SaveIgnoringDuplicateAsync();
     }
 
     public Task<int> CountReviewLikesAsync(Guid reviewId) =>
         _dbContext.ReviewLikes.CountAsync(like => like.ReviewId == reviewId);
 
-    public async Task SetReplyLikeAsync(Guid userId, Guid replyId, bool liked)
+    public async Task<bool> SetReplyLikeAsync(Guid userId, Guid replyId, bool liked)
     {
         var existing = await _dbContext.ReviewReplyLikes
             .FirstOrDefaultAsync(like => like.UserId == userId && like.ReplyId == replyId);
@@ -116,25 +116,27 @@ public class ReviewInteractionRepository : IReviewInteractionRepository
         else if (!liked && existing != null)
             _dbContext.ReviewReplyLikes.Remove(existing);
         else
-            return;
+            return false;
 
-        await SaveIgnoringDuplicateAsync();
+        return await SaveIgnoringDuplicateAsync();
     }
 
     public Task<int> CountReplyLikesAsync(Guid replyId) =>
         _dbContext.ReviewReplyLikes.CountAsync(like => like.ReplyId == replyId);
 
     // Dois cliques rápidos no "curtir" podem tentar inserir a mesma curtida duas vezes:
-    // a chave primária barra a segunda, e o resultado final é o mesmo
-    private async Task SaveIgnoringDuplicateAsync()
+    // a chave primária barra a segunda, e o resultado final é o mesmo (e nada mudou)
+    private async Task<bool> SaveIgnoringDuplicateAsync()
     {
         try
         {
             await _dbContext.SaveChangesAsync();
+            return true;
         }
         catch (DbUpdateException)
         {
             _dbContext.ChangeTracker.Clear();
+            return false;
         }
     }
 

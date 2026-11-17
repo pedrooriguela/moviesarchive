@@ -101,6 +101,12 @@ Para colocar vídeo em outro filme, grave em `VideoUrl` o endereço direto de um
 UPDATE "Movies" SET "VideoUrl" = 'https://archive.org/download/<item>/<arquivo>.mp4' WHERE "Id" = '<id do filme>';
 ```
 
+Depois dele, rode também o script das notificações (avisos de curtidas e respostas):
+
+```bash
+psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f database/2026-11-17_notificacoes.sql
+```
+
 Filme sem `VideoUrl` aparece com o botão "Vídeo indisponível". O endereço do vídeo só é enviado ao front na resposta do play (`POST /api/history`), depois de a API conferir a assinatura.
 
 ### 2.3. Iniciar a API

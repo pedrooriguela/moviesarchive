@@ -53,6 +53,8 @@ builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 builder.Services.AddScoped<IReviewService, ReviewService>();
 builder.Services.AddScoped<IReviewInteractionRepository, ReviewInteractionRepository>();
 builder.Services.AddScoped<IReviewInteractionService, ReviewInteractionService>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<IWatchlistRepository, WatchlistRepository>();
 builder.Services.AddScoped<IWatchlistService, WatchlistService>();
 builder.Services.AddScoped<IWatchHistoryRepository, WatchHistoryRepository>();
