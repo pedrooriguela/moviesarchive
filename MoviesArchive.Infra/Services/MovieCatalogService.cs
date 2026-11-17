@@ -120,6 +120,7 @@ public class MovieCatalogService : IMovieCatalogService
         PosterUrl = movie.PosterUrl,
         AgeRating = movie.AgeRating,
         RuntimeMinutes = movie.RuntimeMinutes,
+        HasVideo = !string.IsNullOrWhiteSpace(movie.VideoUrl),
     };
 
     // Converte os códigos gravados no banco para o nome exibido, ignorando valores desconhecidos

@@ -105,8 +105,9 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
     setPlaying(true)
     setPlayError('')
     try {
-      await recordWatch(movie, token)
-      onPlay(movie)
+      // A resposta do play traz o endereço do vídeo (só para quem tem assinatura)
+      const entry = await recordWatch(movie, token)
+      onPlay({ ...movie, videoUrl: entry.videoUrl })
     } catch (requestError) {
       setPlaying(false)
       // Conta gratuita: em vez de um erro, a página de planos com o aviso
@@ -114,7 +115,11 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
         onRequirePlan(movie)
         return
       }
-      setPlayError(`Não foi possível abrir o filme: ${requestError.message}`)
+      setPlayError(
+        requestError.code === 'video-unavailable'
+          ? requestError.message
+          : `Não foi possível abrir o filme: ${requestError.message}`,
+      )
     }
   }
 
@@ -237,9 +242,15 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
             )}
 
             <div className="movie-actions">
-              <button type="button" className="btn-primary movie-play" onClick={handlePlay} disabled={playing}>
-                <span aria-hidden="true">▶</span> {playing ? 'Abrindo...' : 'Assistir'}
-              </button>
+              {movie.hasVideo === false ? (
+                <button type="button" className="btn-primary movie-play" disabled title="Este filme ainda não tem vídeo no acervo">
+                  <span aria-hidden="true">▶</span> Vídeo indisponível
+                </button>
+              ) : (
+                <button type="button" className="btn-primary movie-play" onClick={handlePlay} disabled={playing}>
+                  <span aria-hidden="true">▶</span> {playing ? 'Abrindo...' : 'Assistir'}
+                </button>
+              )}
               <button type="button" className="btn-secondary movie-add-list" onClick={() => setListsOpen(true)}>
                 <span aria-hidden="true">+</span> Adicionar à lista
               </button>
@@ -285,6 +296,7 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
             status={reviews.status}
             error={reviews.error}
             userId={user?.id}
+            token={token}
             loadingMore={loadingMore}
             onLoadMore={loadMoreReviews}
             onRetry={refreshReviews}

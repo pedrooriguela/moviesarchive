@@ -24,7 +24,9 @@ export const MOVIES = [
   { id: 'm07', title: 'Os Sete Samurais', releaseYear: 1954, language: 'Japonês', director: 'Akira Kurosawa', genres: ['Ação', 'Drama'], synopsis: 'Um vilarejo contrata samurais sem mestre para proteger a colheita de bandidos.' },
   { id: 'm08', title: 'Viagem a Tóquio', releaseYear: 1953, language: 'Japonês', director: 'Yasujirō Ozu', genres: ['Drama'], synopsis: 'Um casal idoso visita os filhos em Tóquio e se sente deslocado na vida agitada da cidade.' },
   { id: 'm09', title: 'Psicose', releaseYear: 1960, language: 'Inglês', director: 'Alfred Hitchcock', genres: ['Suspense', 'Terror'], synopsis: 'Uma secretária foge com dinheiro roubado e para num motel isolado administrado por um rapaz tímido.' },
-  { id: 'm10', title: 'A Noite dos Mortos-Vivos', releaseYear: 1968, language: 'Inglês', director: 'George A. Romero', genres: ['Terror'], synopsis: 'Um grupo se refugia numa casa isolada enquanto mortos-vivos cercam o lugar.' },
+  { id: 'm10', title: 'A Noite dos Mortos-Vivos', releaseYear: 1968, language: 'Inglês', director: 'George A. Romero', genres: ['Terror'], synopsis: 'Um grupo se refugia numa casa isolada enquanto mortos-vivos cercam o lugar.',
+    // Domínio público; cópia em MP4 no Internet Archive (o mesmo exemplo do script SQL)
+    videoUrl: 'https://archive.org/download/Night.Of.The.Living.Dead_1080p/NightOfTheLivingDead_720p_512kb.mp4' },
   { id: 'm11', title: 'Cinema Paradiso', releaseYear: 1988, language: 'Italiano', director: 'Giuseppe Tornatore', genres: ['Drama', 'Romance'], synopsis: 'Um cineasta relembra a infância numa cidade pequena da Sicília e o projecionista que foi seu mentor.' },
   { id: 'm12', title: 'Central do Brasil', releaseYear: 1998, language: 'Português', director: 'Walter Salles', genres: ['Drama'], synopsis: 'Uma ex-professora que escreve cartas para analfabetos se envolve com um menino órfão na estação Central do Rio.' },
   { id: 'm13', title: 'Pixote: A Lei do Mais Fraco', releaseYear: 1980, language: 'Português', director: 'Hector Babenco', genres: ['Crime', 'Drama'], synopsis: 'Um menino abandonado num reformatório sobrevive nas ruas e se envolve com o crime.' },
@@ -38,9 +40,21 @@ export const MOVIES = [
 ]
 
 // Ficha com rating = média das avaliações e votes = quantidade (null/0 sem avaliações)
+// Como a API: o endereço do vídeo não sai no catálogo, só "hasVideo"; ele vem na resposta do play
 export function withRating(movie) {
   const stats = ratingStatsOf(movie.id)
-  return { ...movie, rating: stats?.averageRating ?? null, votes: stats?.reviewCount ?? 0 }
+  // eslint-disable-next-line no-unused-vars
+  const { videoUrl, ...publicFields } = movie
+  return {
+    ...publicFields,
+    rating: stats?.averageRating ?? null,
+    votes: stats?.reviewCount ?? 0,
+    hasVideo: Boolean(videoUrl),
+  }
+}
+
+export function mockVideoUrlOf(movieId) {
+  return MOVIES.find((movie) => movie.id === movieId)?.videoUrl ?? null
 }
 
 // Avaliados primeiro (maior média), depois os sem avaliação; empate pelo título

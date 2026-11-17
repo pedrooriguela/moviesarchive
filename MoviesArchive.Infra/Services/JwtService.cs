@@ -36,7 +36,9 @@ public class JwtService : IJwtService
             issuer: _jwtSettings.Issuer,
             audience: _jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
+            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenMinutes > 0
+                ? _jwtSettings.AccessTokenMinutes
+                : JwtSettings.DefaultAccessTokenMinutes),
             signingCredentials: credentials);
 
         return new JwtSecurityTokenHandler().WriteToken(token);

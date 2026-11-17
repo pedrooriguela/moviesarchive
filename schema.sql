@@ -53,6 +53,23 @@ CREATE TABLE "Users" (
 CREATE UNIQUE INDEX "IX_Users_Email" ON "Users" (lower("Email"));
 CREATE INDEX "IX_Users_SubscriptionId" ON "Users" ("SubscriptionId");
 
+-- Sessões: refresh tokens (só o hash SHA-256; o valor fica no cookie httpOnly do navegador)
+CREATE TABLE "RefreshTokens" (
+    "Id" uuid NOT NULL DEFAULT gen_random_uuid(),
+    "UserId" uuid NOT NULL,
+    "TokenHash" text NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "ExpiresAt" timestamp with time zone NOT NULL,
+    "RevokedAt" timestamp with time zone,
+    "ReplacedByTokenHash" text,
+    CONSTRAINT "PK_RefreshTokens" PRIMARY KEY ("Id"),
+    CONSTRAINT "FK_RefreshTokens_Users_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX "IX_RefreshTokens_TokenHash" ON "RefreshTokens" ("TokenHash");
+CREATE INDEX "IX_RefreshTokens_UserId" ON "RefreshTokens" ("UserId");
+
 -- ============================================================
 -- 3. SEGUIDORES (Relacionamento N:N Usuário -> Usuário)
 -- ============================================================
@@ -86,6 +103,8 @@ CREATE TABLE "Movies" (
     -- Classificação indicativa: idade mínima (0 = livre). Sem classificação conhecida, 18.
     "AgeRating" integer NOT NULL DEFAULT 18,
     "RuntimeMinutes" integer,
+    -- Endereço do vídeo (MP4/WebM) tocado pelo player; sem ele, o filme não tem play
+    "VideoUrl" text,
     CONSTRAINT "PK_Movies" PRIMARY KEY ("Id"),
     CONSTRAINT "CK_Movies_AgeRating" CHECK ("AgeRating" IN (0, 10, 12, 14, 16, 18)),
     CONSTRAINT "CK_Movies_RuntimeMinutes" CHECK ("RuntimeMinutes" IS NULL OR "RuntimeMinutes" > 0),
@@ -175,15 +194,49 @@ CREATE TABLE "Responses" (
     "UserId" uuid NOT NULL,
     "Comment" text NOT NULL,
     "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- Resposta a outra resposta da mesma avaliação (nulo = resposta direta à avaliação)
+    "ParentResponseId" uuid,
+    -- Excluída, mas mantida (sem texto) porque outras respostas dependem dela
+    "DeletedAt" timestamp with time zone,
     CONSTRAINT "PK_Responses" PRIMARY KEY ("Id"),
     CONSTRAINT "FK_Responses_Reviews_ReviewId"
         FOREIGN KEY ("ReviewId") REFERENCES "Reviews" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_Responses_Users_UserId"
-        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_Responses_Responses_ParentResponseId"
+        FOREIGN KEY ("ParentResponseId") REFERENCES "Responses" ("Id") ON DELETE SET NULL
 );
 
 CREATE INDEX "IX_Responses_ReviewId" ON "Responses" ("ReviewId");
 CREATE INDEX "IX_Responses_UserId" ON "Responses" ("UserId");
+CREATE INDEX "IX_Responses_ParentResponseId" ON "Responses" ("ParentResponseId");
+
+-- Curtidas em avaliações e em respostas (uma por usuário)
+CREATE TABLE "ReviewLikes" (
+    "UserId" uuid NOT NULL,
+    "ReviewId" uuid NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_ReviewLikes" PRIMARY KEY ("UserId", "ReviewId"),
+    CONSTRAINT "FK_ReviewLikes_Users_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_ReviewLikes_Reviews_ReviewId"
+        FOREIGN KEY ("ReviewId") REFERENCES "Reviews" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX "IX_ReviewLikes_ReviewId" ON "ReviewLikes" ("ReviewId");
+
+CREATE TABLE "ResponseLikes" (
+    "UserId" uuid NOT NULL,
+    "ResponseId" uuid NOT NULL,
+    "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_ResponseLikes" PRIMARY KEY ("UserId", "ResponseId"),
+    CONSTRAINT "FK_ResponseLikes_Users_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_ResponseLikes_Responses_ResponseId"
+        FOREIGN KEY ("ResponseId") REFERENCES "Responses" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX "IX_ResponseLikes_ResponseId" ON "ResponseLikes" ("ResponseId");
 
 -- ============================================================
 -- 10. WATCHLIST (Relacionamento N:N Usuário -> Filme)

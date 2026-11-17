@@ -2,7 +2,15 @@
 // Não há avaliações pré-cadastradas: a lista de cada filme começa vazia.
 // Os formatos seguem o back-end: ReviewResponseDto, MovieReviewsResponseDto e MovieUserStateDto.
 import { MOVIES, withRating } from './movies.js'
-import { reviewsOf } from './reviewStore.js'
+import {
+  findReply,
+  replyLikesOf,
+  repliesOf,
+  reviewLikesOf,
+  reviewsOf,
+  withEngagement,
+  withReplyLikes,
+} from './reviewStore.js'
 import { getUserFromToken } from '../services/token.js'
 
 const watchlistByUser = new Map() // userId -> [{ movieId, addedAt }]
@@ -23,7 +31,7 @@ function ensureMovie(movieId) {
   return MOVIES.some((movie) => movie.id === movieId)
 }
 
-export function mockGetMovieReviews(movieId, { page = 1, pageSize = 10 } = {}) {
+export function mockGetMovieReviews(movieId, { page = 1, pageSize = 10 } = {}, token) {
   if (!ensureMovie(movieId)) return fail('Filme não encontrado')
 
   const all = [...reviewsOf(movieId)].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
@@ -34,7 +42,7 @@ export function mockGetMovieReviews(movieId, { page = 1, pageSize = 10 } = {}) {
   const start = (page - 1) * pageSize
 
   return delay({
-    items: all.slice(start, start + pageSize),
+    items: all.slice(start, start + pageSize).map((review) => withEngagement(review, currentUser(token).id)),
     page,
     pageSize,
     totalCount: total,
@@ -49,7 +57,7 @@ export function mockGetMyMovieState(movieId, token) {
   const user = currentUser(token)
   const review = reviewsOf(movieId).find((r) => r.userId === user.id) ?? null
   const inWatchlist = (watchlistByUser.get(user.id) ?? []).some((item) => item.movieId === movieId)
-  return delay({ inWatchlist, review: review && { ...review } })
+  return delay({ inWatchlist, review: review && withEngagement(review, user.id) })
 }
 
 export function mockSaveMyReview(movieId, { rating, comment }, token) {
@@ -67,7 +75,7 @@ export function mockSaveMyReview(movieId, { rating, comment }, token) {
   if (existing) {
     existing.rating = rating
     existing.comment = text
-    return delay({ ...existing })
+    return delay(withEngagement(existing, user.id))
   }
 
   const created = {
@@ -81,7 +89,7 @@ export function mockSaveMyReview(movieId, { rating, comment }, token) {
     createdAt: new Date().toISOString(),
   }
   reviews.push(created)
-  return delay({ ...created })
+  return delay(withEngagement(created, user.id))
 }
 
 export function mockDeleteMyReview(movieId, token) {
@@ -111,4 +119,90 @@ export function mockGetMyWatchlist(token) {
       .filter(Boolean)
       .map(withRating),
   )
+}
+
+// ---- Respostas e curtidas ----
+
+function findReview(reviewId) {
+  for (const movie of MOVIES) {
+    const review = reviewsOf(movie.id).find((item) => item.id === reviewId)
+    if (review) return review
+  }
+  return null
+}
+
+export function mockGetReplies(reviewId, token) {
+  if (!findReview(reviewId)) return fail('Avaliação não encontrada.')
+  const viewerId = currentUser(token).id
+  return delay(repliesOf(reviewId).map((reply) => withReplyLikes(reply, viewerId)), 250)
+}
+
+export function mockAddReply(reviewId, { comment, parentReplyId = null }, token) {
+  if (!findReview(reviewId)) return fail('Avaliação não encontrada.')
+  const text = comment?.trim() ?? ''
+  if (!text) return fail('Escreva a resposta antes de enviar.')
+  if (text.length > 1000) return fail('A resposta deve ter até 1000 caracteres.')
+  if (parentReplyId) {
+    const parent = findReply(parentReplyId)
+    if (!parent || parent.reviewId !== reviewId) return fail('Resposta não encontrada.')
+    if (parent.isDeleted) return fail('Essa resposta foi excluída e não pode mais ser respondida.')
+  }
+
+  const user = currentUser(token)
+  const reply = {
+    id: crypto.randomUUID(),
+    reviewId,
+    parentReplyId,
+    userId: user.id,
+    userName: user.name,
+    userPhotoUrl: null,
+    comment: text,
+    isDeleted: false,
+    createdAt: new Date().toISOString(),
+  }
+  repliesOf(reviewId).push(reply)
+  return delay(withReplyLikes(reply, user.id), 250)
+}
+
+export function mockDeleteReply(replyId, token) {
+  const reply = findReply(replyId)
+  if (!reply || reply.isDeleted) return fail('Resposta não encontrada.')
+  if (reply.userId !== currentUser(token).id) return fail('Só quem escreveu a resposta pode excluí-la.')
+
+  const replies = repliesOf(reply.reviewId)
+  const hasChildren = (id) => replies.some((item) => item.parentReplyId === id)
+
+  if (hasChildren(reply.id)) {
+    reply.isDeleted = true
+    reply.comment = ''
+    return delay(null, 200)
+  }
+
+  // Apaga e sobe a conversa removendo respostas já excluídas que ficaram sem filhos
+  let current = reply
+  while (current) {
+    replies.splice(replies.indexOf(current), 1)
+    const parent = current.parentReplyId ? replies.find((item) => item.id === current.parentReplyId) : null
+    current = parent && parent.isDeleted && !hasChildren(parent.id) ? parent : null
+  }
+  return delay(null, 200)
+}
+
+export function mockSetReviewLike(reviewId, liked, token) {
+  if (!findReview(reviewId)) return fail('Avaliação não encontrada.')
+  const likes = reviewLikesOf(reviewId)
+  const userId = currentUser(token).id
+  if (liked) likes.add(userId)
+  else likes.delete(userId)
+  return delay({ likeCount: likes.size, likedByMe: liked }, 150)
+}
+
+export function mockSetReplyLike(replyId, liked, token) {
+  const reply = findReply(replyId)
+  if (!reply || reply.isDeleted) return fail('Resposta não encontrada.')
+  const likes = replyLikesOf(replyId)
+  const userId = currentUser(token).id
+  if (liked) likes.add(userId)
+  else likes.delete(userId)
+  return delay({ likeCount: likes.size, likedByMe: liked }, 150)
 }

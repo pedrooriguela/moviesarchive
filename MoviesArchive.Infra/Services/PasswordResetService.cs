@@ -8,15 +8,18 @@ public class PasswordResetService : IPasswordResetService
     private readonly IUserRepository _userRepository;
     private readonly IEmailService _emailService;
     private readonly IPasswordHasherService  _passwordHasherService;
+    private readonly IAuthTokenService _authTokenService;
 
     public PasswordResetService(
         IUserRepository userRepository,
         IEmailService emailService,
-        IPasswordHasherService passwordHasherService)
+        IPasswordHasherService passwordHasherService,
+        IAuthTokenService authTokenService)
     {
         _userRepository = userRepository;
         _emailService = emailService;
         _passwordHasherService = passwordHasherService;
+        _authTokenService = authTokenService;
     }
 
     public async Task AskPasswordResetAsync(string email)
@@ -40,6 +43,9 @@ public class PasswordResetService : IPasswordResetService
         user.Password = _passwordHasherService.Hash(user, newPassword);
         await _userRepository.UpdatePasswordResetTokenAsync(user.Id, null, null);
         await _userRepository.UpdateAsync(user.Id, user.Name, user.Password);
+
+        // Senha nova: as sessões abertas com a senha antiga deixam de renovar
+        await _authTokenService.RevokeAllAsync(user.Id);
         return true;
     }
     

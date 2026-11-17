@@ -1,4 +1,6 @@
 // Armazenamento e leitura do JWT emitido pela API.
+// O JWT dura pouco (15 min); quem mantém a sessão é o refresh token, num cookie httpOnly
+// que o JavaScript não lê (ver services/api.js: refreshSession).
 const STORAGE_KEY = 'booksarchive.token'
 
 export function saveToken(token) {
@@ -25,11 +27,20 @@ export function decodeToken(token) {
   }
 }
 
-// Claims geradas pelo JwtService: sub (Id), email, name, exp
-export function getUserFromToken(token) {
+// Vence em menos de `marginMs` (ou já venceu)?
+export function isTokenExpiring(token, marginMs = 30_000) {
+  const payload = token ? decodeToken(token) : null
+  if (!payload?.exp) return true
+  return payload.exp * 1000 - Date.now() < marginMs
+}
+
+// Claims geradas pelo JwtService: sub (Id), email, name, exp.
+// Com allowExpired, devolve o usuário mesmo com o JWT vencido: a sessão continua
+// enquanto o refresh token valer, e o authFetch renova o JWT quando precisar.
+export function getUserFromToken(token, { allowExpired = false } = {}) {
   const payload = token ? decodeToken(token) : null
   if (!payload) return null
-  if (payload.exp && payload.exp * 1000 <= Date.now()) return null // expirado
+  if (!allowExpired && payload.exp && payload.exp * 1000 <= Date.now()) return null // expirado
 
   return {
     id: payload.sub,

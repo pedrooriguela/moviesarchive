@@ -11,20 +11,23 @@ public class ReviewService : IReviewService
     private readonly IWatchlistRepository _watchlistRepository;
     private readonly IMovieRepository _movieRepository;
     private readonly IUserRepository _userRepository;
+    private readonly IReviewInteractionRepository _interactionRepository;
 
     public ReviewService(
         IReviewRepository reviewRepository,
         IWatchlistRepository watchlistRepository,
         IMovieRepository movieRepository,
-        IUserRepository userRepository)
+        IUserRepository userRepository,
+        IReviewInteractionRepository interactionRepository)
     {
         _reviewRepository = reviewRepository;
         _watchlistRepository = watchlistRepository;
         _movieRepository = movieRepository;
         _userRepository = userRepository;
+        _interactionRepository = interactionRepository;
     }
 
-    public async Task<MovieReviewsResponseDto> GetMovieReviewsAsync(Guid movieId, int page, int pageSize)
+    public async Task<MovieReviewsResponseDto> GetMovieReviewsAsync(Guid movieId, int page, int pageSize, Guid? viewerId)
     {
         await EnsureMovieExistsAsync(movieId);
 
@@ -45,9 +48,15 @@ public class ReviewService : IReviewService
             ? null
             : Math.Round(counts.Sum(pair => pair.Key * pair.Value) / ratedCount, 2);
 
+        // Curtidas (e se quem vê já curtiu) e quantidade de respostas de cada avaliação da página
+        var engagement = await _interactionRepository.GetReviewEngagementAsync(
+            items.Select(item => item.Review.Id).ToList(), viewerId);
+
         return new MovieReviewsResponseDto
         {
-            Items = items.Select(item => ToResponse(item.Review, item.AuthorName, item.AuthorHasPhoto)).ToList(),
+            Items = items
+                .Select(item => ToResponse(item.Review, item.AuthorName, item.AuthorHasPhoto, engagement.GetValueOrDefault(item.Review.Id)))
+                .ToList(),
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,
@@ -66,7 +75,7 @@ public class ReviewService : IReviewService
         return new MovieUserStateDto
         {
             InWatchlist = await _watchlistRepository.ContainsAsync(userId, movieId),
-            Review = review == null ? null : await ToResponseAsync(review),
+            Review = review == null ? null : await ToResponseAsync(review, userId),
         };
     }
 
@@ -87,7 +96,7 @@ public class ReviewService : IReviewService
             await _reviewRepository.UpdateAsync(review);
         }
 
-        return await ToResponseAsync(review);
+        return await ToResponseAsync(review, userId);
     }
 
     public async Task DeleteAsync(Guid movieId, Guid userId)
@@ -104,13 +113,14 @@ public class ReviewService : IReviewService
             throw new MovieNotFoundException();
     }
 
-    private async Task<ReviewResponseDto> ToResponseAsync(Review review)
+    private async Task<ReviewResponseDto> ToResponseAsync(Review review, Guid viewerId)
     {
         var user = await _userRepository.GetByIdAsync(review.UserId);
-        return ToResponse(review, user?.Name ?? string.Empty, user?.PhotoData != null);
+        var engagement = await _interactionRepository.GetReviewEngagementAsync([review.Id], viewerId);
+        return ToResponse(review, user?.Name ?? string.Empty, user?.PhotoData != null, engagement.GetValueOrDefault(review.Id));
     }
 
-    private static ReviewResponseDto ToResponse(Review review, string userName, bool hasPhoto) => new()
+    private static ReviewResponseDto ToResponse(Review review, string userName, bool hasPhoto, ReviewEngagement? engagement) => new()
     {
         Id = review.Id,
         MovieId = review.MovieId,
@@ -121,5 +131,8 @@ public class ReviewService : IReviewService
         Rating = review.Rating,
         Comment = review.Comment,
         CreatedAt = review.CreatedAt,
+        LikeCount = engagement?.LikeCount ?? 0,
+        LikedByMe = engagement?.LikedByViewer ?? false,
+        ReplyCount = engagement?.ReplyCount ?? 0,
     };
 }
