@@ -29,6 +29,10 @@ public class User : Entity
     // Nula = conta gratuita. Ao encerrar a assinatura, volta a ser nula para todos.
     public Guid? SubscriptionId { get; set; }
 
+    // Administrador: cadastra e remove filmes e vê as estatísticas da plataforma.
+    // O primeiro é marcado direto no banco; depois, um administrador promove os outros pelo painel.
+    public bool IsAdmin { get; set; }
+
     public const int AdultAge = 18;
 
     // Idade em anos completos na data informada; nula sem data de nascimento

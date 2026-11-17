@@ -1,9 +1,32 @@
 import { useEffect, useState } from 'react'
 import DeleteAccountDialog from '../components/DeleteAccountDialog.jsx'
+import PixelIcon from '../components/PixelIcon.jsx'
 import { formatDate, todayIso } from '../utils/dates.js'
 import { getMyProfile, getPhotoSrc, removeMyProfilePhoto, updateMyProfile, uploadMyProfilePhoto } from '../services/api.js'
 
-export default function ProfilePage({ token, onBack, onProfileUpdated, onAccountDeleted }) {
+// Atalhos da conta: tudo o que era da barra de menu da tela inicial agora fica aqui
+function shortcutsFor(user) {
+  return [
+    { id: 'lists', icon: 'lists', title: 'Minhas listas', text: 'Suas listas e a watchlist' },
+    { id: 'history', icon: 'history', title: 'Meu histórico', text: 'Filmes que você assistiu' },
+    { id: 'subscription', icon: 'subscription', title: 'Assinatura', text: 'Seu plano e a família' },
+    user?.isAdmin && { id: 'admin', icon: 'admin', title: 'Administração', text: 'Catálogo e estatísticas' },
+    { id: 'logout', icon: 'logout', title: 'Sair', text: 'Encerrar a sessão' },
+  ].filter(Boolean)
+}
+
+export default function ProfilePage({
+  token,
+  user,
+  onBack,
+  onProfileUpdated,
+  onAccountDeleted,
+  onOpenLists,
+  onOpenHistory,
+  onOpenSubscription,
+  onOpenAdmin,
+  onLogout,
+}) {
   const [profile, setProfile] = useState(null)
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('') // só editável enquanto a conta não tiver data
@@ -102,6 +125,14 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
     setIsEditing(false)
   }
 
+  const actions = {
+    lists: onOpenLists,
+    history: onOpenHistory,
+    subscription: onOpenSubscription,
+    admin: onOpenAdmin,
+    logout: onLogout,
+  }
+
   return (
     <section className="profile-layout">
       <div className="profile-heading">
@@ -109,9 +140,26 @@ export default function ProfilePage({ token, onBack, onProfileUpdated, onAccount
           ← Voltar
         </button>
         <div>
-          <h1>Seu perfil</h1>
+          <h1>Meu perfil</h1>
         </div>
       </div>
+
+      <nav className="profile-shortcuts" aria-label="Minha conta">
+        {shortcutsFor(profile ?? user).map((shortcut) => (
+          <button
+            key={shortcut.id}
+            type="button"
+            className={`profile-shortcut profile-shortcut-${shortcut.id}`}
+            onClick={actions[shortcut.id]}
+          >
+            <PixelIcon name={shortcut.icon} />
+            <span className="profile-shortcut-title">{shortcut.title}</span>
+            <span className="profile-shortcut-text">{shortcut.text}</span>
+          </button>
+        ))}
+      </nav>
+
+      <h2 className="profile-section-title">Meus dados</h2>
 
       <div className="profile-content">
         <aside className="profile-aside" aria-label="Prévia da foto de perfil">

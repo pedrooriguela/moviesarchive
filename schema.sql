@@ -45,6 +45,9 @@ CREATE TABLE "Users" (
     -- Assinatura ATIVA de que a pessoa faz parte (titular ou convidada); nula = gratuita.
     -- A chave estrangeira é criada depois de "Subscriptions" (seção 12).
     "SubscriptionId" uuid,
+    -- Administrador: cadastra e remove filmes, vê as estatísticas e promove outros administradores.
+    -- O primeiro é marcado à mão (UPDATE "Users" SET "IsAdmin" = true WHERE "Name" = '...').
+    "IsAdmin" boolean NOT NULL DEFAULT false,
     CONSTRAINT "PK_Users" PRIMARY KEY ("Id"),
     CONSTRAINT "CK_Users_BirthDate" CHECK ("BirthDate" IS NULL OR "BirthDate" >= DATE '1900-01-01')
 );
@@ -105,6 +108,9 @@ CREATE TABLE "Movies" (
     "RuntimeMinutes" integer,
     -- Endereço do vídeo (MP4/WebM) tocado pelo player; sem ele, o filme não tem play
     "VideoUrl" text,
+    -- Remoção pelo administrador (exclusão lógica): preenchido = fora do catálogo.
+    -- O filme some da busca, das listas e da ficha, mas continua no histórico de quem assistiu.
+    "DeletedAt" timestamp with time zone,
     CONSTRAINT "PK_Movies" PRIMARY KEY ("Id"),
     CONSTRAINT "CK_Movies_AgeRating" CHECK ("AgeRating" IN (0, 10, 12, 14, 16, 18)),
     CONSTRAINT "CK_Movies_RuntimeMinutes" CHECK ("RuntimeMinutes" IS NULL OR "RuntimeMinutes" > 0),
@@ -137,6 +143,8 @@ CREATE TABLE "Lists" (
     "Description" text,
     "IsPublic" boolean NOT NULL DEFAULT false,
     "CreatedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- A watchlist é uma lista como as outras, mas fixa: não pode ser renomeada nem excluída
+    "IsWatchlist" boolean NOT NULL DEFAULT false,
     CONSTRAINT "PK_Lists" PRIMARY KEY ("Id"),
     CONSTRAINT "FK_Lists_Users_UserId"
         FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
@@ -144,6 +152,8 @@ CREATE TABLE "Lists" (
 
 -- Também cobre consultas por UserId (prefixo do índice)
 CREATE UNIQUE INDEX "IX_Lists_UserId_Title" ON "Lists" ("UserId", "Title");
+-- No máximo uma watchlist por usuário (criada pela API na primeira vez que ela é usada)
+CREATE UNIQUE INDEX "IX_Lists_UserId_Watchlist" ON "Lists" ("UserId") WHERE "IsWatchlist";
 
 -- ============================================================
 -- 7. ITENS DA LISTA (Relacionamento N:N Lista -> Filme)
@@ -274,20 +284,11 @@ CREATE INDEX "IX_Notifications_ReviewId" ON "Notifications" ("ReviewId");
 CREATE INDEX "IX_Notifications_ResponseId" ON "Notifications" ("ResponseId");
 
 -- ============================================================
--- 10. WATCHLIST (Relacionamento N:N Usuário -> Filme)
+-- 10. WATCHLIST
 -- ============================================================
-CREATE TABLE "Watchlist" (
-    "UserId" uuid NOT NULL,
-    "MovieId" uuid NOT NULL,
-    "AddedAt" timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT "PK_Watchlist" PRIMARY KEY ("UserId", "MovieId"),
-    CONSTRAINT "FK_Watchlist_Users_UserId"
-        FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE,
-    CONSTRAINT "FK_Watchlist_Movies_MovieId"
-        FOREIGN KEY ("MovieId") REFERENCES "Movies" ("Id") ON DELETE CASCADE
-);
-
-CREATE INDEX "IX_Watchlist_MovieId" ON "Watchlist" ("MovieId");
+-- A watchlist agora é uma linha de "Lists" com "IsWatchlist" = true (seção 6), e os filmes
+-- dela ficam em "ListMovies". A antiga tabela "Watchlist" não existe mais num banco novo;
+-- num banco antigo, database/2026-11-17_admin_e_watchlist_nas_listas.sql copia os dados.
 
 -- ============================================================
 -- 11. HISTÓRICO DE VISUALIZAÇÕES

@@ -12,7 +12,9 @@ import {
 
 const EMPTY_FORM = { title: '', description: '', isPublic: false }
 
-export default function ListsPage({ token, onBack }) {
+// A watchlist (isWatchlist) é a primeira lista e funciona como as outras: só não pode ser
+// renomeada nem excluída. O botão "Adicionar à watchlist" da ficha coloca o filme no fim dela.
+export default function ListsPage({ token, initialListId, onSelectList, onBack, onOpenMovie }) {
   const [lists, setLists] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [mode, setMode] = useState('view') // 'view' | 'create' | 'edit'
@@ -36,7 +38,9 @@ export default function ListsPage({ token, onBack }) {
       .then((data) => {
         if (!active) return
         setLists(data)
-        setSelectedId(data[0]?.id ?? null)
+        // Volta para a lista que estava aberta (ex.: depois de abrir a ficha de um filme dela)
+        const initial = data.find((list) => list.id === initialListId) ?? data[0]
+        setSelectedId(initial?.id ?? null)
         if (data.length === 0) setMode('create')
       })
       .catch((requestError) => {
@@ -49,7 +53,13 @@ export default function ListsPage({ token, onBack }) {
     return () => {
       active = false
     }
+    // initialListId só vale na primeira carga; depois, a lista aberta fica no estado desta tela
   }, [token, reloadKey])
+
+  // Guarda a lista aberta para quem chamou a tela (App), para voltar a ela depois da ficha
+  useEffect(() => {
+    if (selectedId) onSelectList?.(selectedId)
+  }, [selectedId, onSelectList])
 
   function reload() {
     setLoadError('')
@@ -137,6 +147,8 @@ export default function ListsPage({ token, onBack }) {
     event.preventDefault()
 
     const payload = { ...form, title: form.title.trim(), description: form.description.trim() }
+    // O nome da watchlist não muda: vai sempre o atual
+    if (mode === 'edit' && selectedList?.isWatchlist) payload.title = selectedList.title
     if (!payload.title) {
       setError('O título da lista é obrigatório.')
       return
@@ -145,7 +157,12 @@ export default function ListsPage({ token, onBack }) {
     if (mode === 'create') {
       run(async () => {
         const created = await createList(token, payload)
-        setLists((current) => [created, ...current])
+        // A watchlist continua sempre em primeiro
+        setLists((current) => {
+          const watchlists = current.filter((list) => list.isWatchlist)
+          const others = current.filter((list) => !list.isWatchlist)
+          return [...watchlists, created, ...others]
+        })
         setSelectedId(created.id)
         setMode('view')
       }, 'Lista criada.')
@@ -158,6 +175,7 @@ export default function ListsPage({ token, onBack }) {
   }
 
   function handleDelete() {
+    if (selectedList.isWatchlist) return
     if (!window.confirm(`Excluir a lista "${selectedList.title}"?`)) return
 
     run(async () => {
@@ -194,10 +212,12 @@ export default function ListsPage({ token, onBack }) {
 
   const listMovieIds = new Set(selectedList?.items.map((item) => item.movieId))
 
+  const editingWatchlist = mode === 'edit' && selectedList?.isWatchlist
+
   return (
     <section className="profile-layout lists-layout">
       <div className="profile-heading">
-        <button type="button" className="back-button" onClick={onBack} aria-label="Voltar ao início">
+        <button type="button" className="back-button" onClick={onBack} aria-label="Voltar ao perfil">
           ← Voltar
         </button>
         <div>
@@ -231,11 +251,18 @@ export default function ListsPage({ token, onBack }) {
                   <li key={list.id}>
                     <button
                       type="button"
-                      className={list.id === selectedId && mode !== 'create' ? 'lists-nav-item active' : 'lists-nav-item'}
+                      className={[
+                        'lists-nav-item',
+                        list.isWatchlist && 'is-watchlist',
+                        list.id === selectedId && mode !== 'create' && 'active',
+                      ]
+                        .filter(Boolean)
+                        .join(' ')}
                       onClick={() => selectList(list.id)}
                     >
                       <span className="lists-nav-title">{list.title}</span>
                       <span className="lists-nav-meta">
+                        {list.isWatchlist && <span className="lists-nav-pin">Fixa</span>}
                         {list.items.length} {list.items.length === 1 ? 'filme' : 'filmes'} ·{' '}
                         {list.isPublic ? 'Pública' : 'Privada'}
                       </span>
@@ -252,7 +279,9 @@ export default function ListsPage({ token, onBack }) {
 
             {mode === 'create' || mode === 'edit' ? (
               <form onSubmit={handleSubmit}>
-                <h2 className="lists-title">{mode === 'create' ? 'Nova lista' : 'Editar lista'}</h2>
+                <h2 className="lists-title">
+                  {mode === 'create' ? 'Nova lista' : editingWatchlist ? 'Editar watchlist' : 'Editar lista'}
+                </h2>
 
                 <div className="field">
                   <label htmlFor="list-title">Título</label>
@@ -262,8 +291,15 @@ export default function ListsPage({ token, onBack }) {
                     maxLength={100}
                     value={form.title}
                     onChange={(event) => setForm({ ...form, title: event.target.value })}
+                    readOnly={editingWatchlist}
+                    aria-describedby={editingWatchlist ? 'list-title-hint' : undefined}
                     required
                   />
+                  {editingWatchlist && (
+                    <span id="list-title-hint" className="field-hint">
+                      O nome da watchlist não pode ser alterado. Descrição e visibilidade, sim.
+                    </span>
+                  )}
                 </div>
 
                 <div className="field">
@@ -304,16 +340,25 @@ export default function ListsPage({ token, onBack }) {
                     <span className={selectedList.isPublic ? 'badge badge-public' : 'badge'}>
                       {selectedList.isPublic ? 'Pública' : 'Privada'}
                     </span>
+                    {selectedList.isWatchlist && <span className="badge badge-fixed">Lista fixa</span>}
                   </div>
                   <div className="list-actions">
                     <button type="button" className="btn-secondary" onClick={startEditing} disabled={saving}>
                       Editar
                     </button>
-                    <button type="button" className="btn-danger" onClick={handleDelete} disabled={saving}>
-                      Excluir
-                    </button>
+                    {!selectedList.isWatchlist && (
+                      <button type="button" className="btn-danger" onClick={handleDelete} disabled={saving}>
+                        Excluir
+                      </button>
+                    )}
                   </div>
                 </div>
+                {selectedList.isWatchlist && (
+                  <p className="field-hint list-watchlist-hint">
+                    Filmes guardados para assistir depois. O botão “Adicionar à watchlist” da ficha do filme
+                    coloca o filme aqui. Esta lista não pode ser renomeada nem excluída.
+                  </p>
+                )}
                 {selectedList.description && <p className="list-description">{selectedList.description}</p>}
 
                 <div className="field movie-search">
@@ -352,13 +397,30 @@ export default function ListsPage({ token, onBack }) {
                 </div>
 
                 {selectedList.items.length === 0 ? (
-                  <p className="lists-empty">Esta lista ainda não tem filmes.</p>
+                  <p className="lists-empty">
+                    {selectedList.isWatchlist
+                      ? 'Sua watchlist está vazia. Busque um filme acima ou use “Adicionar à watchlist” na ficha.'
+                      : 'Esta lista ainda não tem filmes.'}
+                  </p>
                 ) : (
                   <ol className="list-items">
                     {selectedList.items.map((item, index) => (
                       <li key={item.movieId}>
                         <span className="list-item-position">{index + 1}</span>
-                        <span className="list-item-title">{item.movieTitle}</span>
+                        <span className="list-item-title">
+                          {onOpenMovie ? (
+                            <button
+                              type="button"
+                              className="link list-item-open"
+                              onClick={() => onOpenMovie(item.movieId)}
+                              title="Abrir a ficha do filme"
+                            >
+                              {item.movieTitle}
+                            </button>
+                          ) : (
+                            item.movieTitle
+                          )}
+                        </span>
                         <div className="list-item-actions">
                           <button
                             type="button"

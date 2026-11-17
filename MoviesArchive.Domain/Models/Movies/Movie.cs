@@ -31,6 +31,16 @@ public class Movie : Entity
     // Endereço do arquivo de vídeo (MP4/WebM) tocado pelo player; sem ele, o filme não tem play
     public string? VideoUrl { get; set; }
 
+    // Remoção pelo administrador: o filme some do catálogo para os usuários, mas a linha fica
+    // no banco para o histórico de quem já assistiu continuar mostrando o título. Nulo = no catálogo.
+    public DateTimeOffset? DeletedAt { get; set; }
+
+    public bool IsRemoved => DeletedAt != null;
+
+    public void Remove() => DeletedAt ??= DateTimeOffset.UtcNow;
+
+    public void Restore() => DeletedAt = null;
+
     public class Builder
     {
         public static Movie Create(string title, DateOnly? releaseDate) =>

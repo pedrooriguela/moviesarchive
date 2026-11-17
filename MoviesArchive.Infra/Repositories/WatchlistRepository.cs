@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Movies;
-using MoviesArchive.Domain.Models.Watchlist;
 using MoviesArchive.Infra.Database;
 
 namespace MoviesArchive.Infra.Repositories;
 
+// Consultas da watchlist, que agora é a lista fixa do usuário (Lists.IsWatchlist).
+// Adicionar e remover filmes passa pelas mesmas regras das outras listas (MovieListService).
 public class WatchlistRepository : IWatchlistRepository
 {
     private readonly MoviesArchiveDbContext _dbContext;
@@ -17,34 +18,17 @@ public class WatchlistRepository : IWatchlistRepository
     }
 
     public Task<bool> ContainsAsync(Guid userId, Guid movieId) =>
-        _dbContext.Watchlist.AnyAsync(item => item.UserId == userId && item.MovieId == movieId);
+        _dbContext.ListMovies.AnyAsync(item =>
+            item.MovieId == movieId &&
+            _dbContext.Lists.Any(list => list.Id == item.ListId && list.UserId == userId && list.IsWatchlist));
 
-    public Task<WatchlistItem?> GetAsync(Guid userId, Guid movieId) =>
-        _dbContext.Watchlist.FirstOrDefaultAsync(item => item.UserId == userId && item.MovieId == movieId);
-
-    // Filmes da watchlist, do adicionado por último ao mais antigo
+    // Filmes da watchlist na ordem da lista
     public Task<List<Movie>> GetMoviesAsync(Guid userId) =>
-        _dbContext.Watchlist
+        _dbContext.ListMovies
             .AsNoTracking()
-            .Where(item => item.UserId == userId)
-            .Join(
-                _dbContext.Movies.AsNoTracking(),
-                item => item.MovieId,
-                movie => movie.Id,
-                (item, movie) => new { item.AddedAt, Movie = movie })
-            .OrderByDescending(row => row.AddedAt)
-            .Select(row => row.Movie)
+            .Where(item => _dbContext.Lists.Any(list => list.Id == item.ListId && list.UserId == userId && list.IsWatchlist))
+            .OrderBy(item => item.Position)
+            .ThenBy(item => item.AddedAt)
+            .Select(item => item.Movie!)
             .ToListAsync();
-
-    public async Task AddAsync(WatchlistItem item)
-    {
-        await _dbContext.Watchlist.AddAsync(item);
-        await _dbContext.SaveChangesAsync();
-    }
-
-    public async Task RemoveAsync(WatchlistItem item)
-    {
-        _dbContext.Watchlist.Remove(item);
-        await _dbContext.SaveChangesAsync();
-    }
 }

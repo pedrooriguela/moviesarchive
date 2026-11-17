@@ -37,13 +37,7 @@ export function deleteMyReview(movieId, token) {
   return authFetch(`/api/movies/${movieId}/review`, token, { method: 'DELETE' })
 }
 
-/** GET /api/watchlist/me — fichas resumidas, da mais recente à mais antiga */
-export function getMyWatchlist(token) {
-  if (USE_MOCKS) return mock.mockGetMyWatchlist(token)
-  return authFetch('/api/watchlist/me', token)
-}
-
-/** PUT/DELETE /api/watchlist/{id} — idempotentes */
+/** PUT/DELETE /api/watchlist/{id} — idempotentes. A watchlist em si aparece em "Minhas listas". */
 export function setInWatchlist(movieId, inWatchlist, token) {
   if (USE_MOCKS) return mock.mockSetInWatchlist(movieId, inWatchlist, token)
   return authFetch(`/api/watchlist/${movieId}`, token, { method: inWatchlist ? 'PUT' : 'DELETE' })

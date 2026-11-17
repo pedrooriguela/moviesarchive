@@ -17,4 +17,8 @@ public interface IUserRepository
     Task<User?> GetByEmailAsync(string email);
     Task UpdatePasswordResetTokenAsync(Guid id, string? token, DateTime? expiresAt);
     Task<User?> GetByPasswordResetTokenAsync(string token);
+
+    // Painel do administrador: busca por nome ou e-mail (sem as contas anonimizadas)
+    Task<List<User>> SearchAsync(string? query, bool onlyAdmins, int limit);
+    Task<bool> SetAdminAsync(Guid id, bool isAdmin);
 }

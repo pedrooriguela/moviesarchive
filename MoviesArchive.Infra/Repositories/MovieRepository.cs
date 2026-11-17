@@ -1,5 +1,6 @@
 using MoviesArchive.Infra.Database;
 using MoviesArchive.Domain.Interfaces;
+using MoviesArchive.Domain.Models.Admin;
 using MoviesArchive.Domain.Models.Movies;
 using MoviesArchive.Domain.Models.Recommendations;
 using Microsoft.EntityFrameworkCore;
@@ -129,9 +130,10 @@ public class MovieRepository : IMovieRepository
             .Where(review => review.UserId == userId)
             .ToDictionaryAsync(review => review.MovieId, review => review.Rating);
 
-        var watchlist = await _dbContext.Watchlist
+        // A watchlist é a lista fixa do usuário (Lists.IsWatchlist)
+        var watchlist = await _dbContext.ListMovies
             .AsNoTracking()
-            .Where(item => item.UserId == userId)
+            .Where(item => _dbContext.Lists.Any(list => list.Id == item.ListId && list.UserId == userId && list.IsWatchlist))
             .Select(item => item.MovieId)
             .ToListAsync();
 
@@ -219,6 +221,77 @@ public class MovieRepository : IMovieRepository
             .Select(row => row.Movie)
             .ToListAsync();
     }
+
+    // ---- Painel do administrador. IgnoreQueryFilters: entram os filmes removidos e os de
+    // qualquer classificação indicativa, porque é ali que eles são cadastrados e restaurados.
+
+    public async Task<(List<Movie> Items, int TotalCount)> SearchForAdminAsync(
+        string? query, AdminMovieStatus status, int page, int pageSize)
+    {
+        var movies = ApplyTextSearch(_dbContext.Movies.IgnoreQueryFilters().AsNoTracking(), query, includeDirector: true);
+
+        movies = status switch
+        {
+            AdminMovieStatus.Active => movies.Where(movie => movie.DeletedAt == null),
+            AdminMovieStatus.Removed => movies.Where(movie => movie.DeletedAt != null),
+            _ => movies,
+        };
+
+        var totalCount = await movies.CountAsync();
+
+        var items = await movies
+            .OrderBy(movie => movie.Title)
+            .ThenBy(movie => movie.ReleaseDate)
+            .ThenBy(movie => movie.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (items, totalCount);
+    }
+
+    // Rastreado pelo EF: as alterações são gravadas com SaveChangesAsync
+    public Task<Movie?> GetForAdminAsync(Guid movieId) =>
+        _dbContext.Movies
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(movie => movie.Id == movieId);
+
+    // Mesmo título (sem diferenciar maiúsculas) e mesmo ano, entre os filmes que estão no catálogo
+    public Task<bool> ExistsInCatalogAsync(string title, int? releaseYear, Guid? ignoredMovieId = null)
+    {
+        var normalized = title.Trim().ToLower();
+        return _dbContext.Movies
+            .IgnoreQueryFilters()
+            .Where(movie => movie.DeletedAt == null)
+            .Where(movie => ignoredMovieId == null || movie.Id != ignoredMovieId)
+            .Where(movie => movie.Title.ToLower() == normalized)
+            .AnyAsync(movie => releaseYear == null
+                ? movie.ReleaseDate == null
+                : movie.ReleaseDate != null && movie.ReleaseDate.Value.Year == releaseYear);
+    }
+
+    // Cliques no play de cada filme, desde sempre (filmes sem acesso ficam fora do dicionário)
+    public async Task<Dictionary<Guid, int>> CountAccessesAsync(IReadOnlyCollection<Guid> movieIds)
+    {
+        if (movieIds.Count == 0)
+            return new Dictionary<Guid, int>();
+
+        var ids = movieIds.Distinct().ToList();
+        return await _dbContext.WatchHistory
+            .IgnoreQueryFilters()
+            .Where(entry => ids.Contains(entry.MovieId))
+            .GroupBy(entry => entry.MovieId)
+            .Select(group => new { MovieId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(row => row.MovieId, row => row.Count);
+    }
+
+    public async Task AddAsync(Movie movie)
+    {
+        await _dbContext.Movies.AddAsync(movie);
+        await _dbContext.SaveChangesAsync();
+    }
+
+    public Task SaveChangesAsync() => _dbContext.SaveChangesAsync();
 
     // Cada palavra da busca precisa aparecer no título (ou no diretor), ignorando acentos e maiúsculas:
     // "kubrick iluminado" acha O Iluminado, "toquio" acha Viagem a Tóquio

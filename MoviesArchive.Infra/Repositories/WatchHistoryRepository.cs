@@ -21,10 +21,13 @@ public class WatchHistoryRepository : IWatchHistoryRepository
         await _dbContext.SaveChangesAsync();
     }
 
-    // Mais recentes primeiro; o Id desempata entradas com o mesmo horário para a paginação não repetir itens
+    // Mais recentes primeiro; o Id desempata entradas com o mesmo horário para a paginação não repetir itens.
+    // Filmes removidos do catálogo continuam aparecendo aqui (só o filtro Removed é desligado;
+    // a classificação indicativa continua valendo).
     public async Task<(List<WatchHistoryEntry> Items, int TotalCount)> GetByUserIdAsync(Guid userId, int page, int pageSize)
     {
         var query = _dbContext.WatchHistory
+            .IgnoreQueryFilters([MovieQueryFilters.Removed])
             .AsNoTracking()
             .Where(entry => entry.UserId == userId);
 

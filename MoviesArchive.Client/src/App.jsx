@@ -8,15 +8,16 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage.jsx'
 import ResetPasswordPage from './pages/ResetPasswordPage.jsx'
 import ListsPage from './pages/ListsPage.jsx'
 import MoviePage from './pages/MoviePage.jsx'
-import WatchlistPage from './pages/WatchlistPage.jsx'
 import PlayerPage from './pages/PlayerPage.jsx'
 import HistoryPage from './pages/HistoryPage.jsx'
 import PlansPage from './pages/PlansPage.jsx'
 import SubscriptionPage from './pages/SubscriptionPage.jsx'
+import AdminPage from './pages/AdminPage.jsx'
+import Avatar from './components/Avatar.jsx'
 import Dialog from './components/Dialog.jsx'
 import NotificationBell from './components/NotificationBell.jsx'
 import { clearToken, getUserFromToken, isTokenExpiring, loadToken, saveToken } from './services/token.js'
-import { getPhotoSrc, logout, onSessionChange, refreshSession } from './services/api.js'
+import { getMyProfile, logout, onSessionChange, refreshSession } from './services/api.js'
 import './App.css'
 
 // Mesma rota usada pelo back-end ao montar o link do e-mail (PasswordResetService)
@@ -34,7 +35,7 @@ const initialRoute = getInitialRoute()
 const DIALOG_TITLES = { login: 'Entrar', signup: 'Criar nova conta' }
 
 // Texto do "Voltar" da ficha, conforme a tela de onde o filme foi aberto
-const MOVIE_BACK_LABELS = { watchlist: 'Voltar à watchlist', history: 'Voltar ao histórico' }
+const MOVIE_BACK_LABELS = { lists: 'Voltar às listas', history: 'Voltar ao histórico' }
 
 // Texto do "Voltar" dos planos, conforme a tela de onde a pessoa veio
 const PLANS_BACK_LABELS = { movie: 'Voltar à ficha', subscription: 'Voltar à minha assinatura' }
@@ -53,7 +54,7 @@ function App() {
   const [notice, setNotice] = useState('')
   const [landingNotice, setLandingNotice] = useState('') // aviso na vitrine, ex.: conta excluída
   const [profile, setProfile] = useState(null)
-  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'watchlist' | 'player' | 'history' | 'plans' | 'subscription'
+  const [authenticatedView, setAuthenticatedView] = useState('home') // 'home' | 'profile' | 'lists' | 'movie' | 'player' | 'history' | 'plans' | 'subscription' | 'admin'
   const [selectedMovieId, setSelectedMovieId] = useState(null)
   const [movieOrigin, setMovieOrigin] = useState('home') // tela para onde o "Voltar" da ficha leva
   // Avaliação/resposta a destacar ao abrir a ficha por uma notificação ({ reviewId, replyId, nonce })
@@ -62,6 +63,7 @@ function App() {
   const [homeVisit, setHomeVisit] = useState(0) // muda a cada volta ao início, para zerar a busca
   const [plansNotice, setPlansNotice] = useState('') // aviso no topo dos planos, ex.: vindo do play
   const [plansReturn, setPlansReturn] = useState('home') // para onde o "Voltar" dos planos leva
+  const [selectedListId, setSelectedListId] = useState(null) // lista aberta em "Minhas listas", para voltar a ela
 
   // O JWT vencido não encerra a sessão: o authFetch o renova. Quem encerra é o refresh token recusado.
   const user = restoring ? null : getUserFromToken(token, { allowExpired: true })
@@ -71,6 +73,24 @@ function App() {
   useEffect(() => {
     if (!restoring && token && !user) clearToken()
   }, [restoring, token, user])
+
+  // Foto, nome atualizado e se é administrador: o botão do perfil no topo e o menu dependem disso
+  const userId = user?.id
+  useEffect(() => {
+    if (!userId) return
+    let active = true
+    getMyProfile(token)
+      .then((data) => {
+        if (active) setProfile(data)
+      })
+      .catch(() => {
+        // Sem o perfil, o topo mostra a inicial do nome do token; a tela de perfil tenta de novo
+      })
+    return () => {
+      active = false
+    }
+    // Só ao entrar (ou trocar de conta): o token renovado a cada 15 minutos não muda o perfil
+  }, [userId])
 
   useEffect(() => {
     if (!restoring) return
@@ -136,6 +156,7 @@ function App() {
     saveToken(newToken)
     setToken(newToken)
     setProfile(null)
+    setSelectedListId(null)
     setAuthenticatedView('home')
     setNotice('')
     setDialog(null)
@@ -170,9 +191,20 @@ function App() {
   }
 
   function leaveMovie() {
-    if (movieOrigin === 'watchlist') setAuthenticatedView('watchlist')
+    if (movieOrigin === 'lists') setAuthenticatedView('lists')
     else if (movieOrigin === 'history') setAuthenticatedView('history')
     else goHome()
+  }
+
+  // Minhas listas, histórico, assinatura, administração e sair ficam dentro do perfil
+  function openProfile() {
+    setAuthenticatedView('profile')
+    window.scrollTo(0, 0)
+  }
+
+  function openFromProfile(view) {
+    setAuthenticatedView(view)
+    window.scrollTo(0, 0)
   }
 
   // Chamado pela ficha depois de registrar a visualização no histórico
@@ -235,18 +267,25 @@ function App() {
                       })
                   }
               />
+              {/* Única entrada para o perfil, onde ficam listas, histórico, assinatura e sair */}
               <button
                   type="button"
-                  className="profile-menu-button"
-                  onClick={() => setAuthenticatedView('profile')}
-                  aria-label="Abrir perfil"
-                  title="Perfil"
+                  className={authenticatedView === 'profile' ? 'profile-menu-button is-current' : 'profile-menu-button'}
+                  onClick={openProfile}
+                  aria-label="Meu perfil"
+                  aria-current={authenticatedView === 'profile' ? 'page' : undefined}
+                  title="Abrir meu perfil"
+                  disabled={restoring}
               >
-                {activeUser.photoUrl ? (
-                    <img src={getPhotoSrc(activeUser.photoUrl)} alt="" />
-                ) : (
-                    <span>{activeUser.name?.trim().charAt(0).toUpperCase() || '?'}</span>
-                )}
+                <span className="profile-menu-photo">
+                  <Avatar name={activeUser.name ?? ''} photoUrl={activeUser.photoUrl} size={48} />
+                </span>
+                <span className="profile-menu-text">
+                  <span className="profile-menu-name">{activeUser.name}</span>
+                  <span className="profile-menu-hint">
+                    {activeUser.isAdmin ? 'Meu perfil · Admin' : 'Meu perfil'} <span aria-hidden="true">▸</span>
+                  </span>
+                </span>
               </button>
               </div>
           )}
@@ -281,9 +320,15 @@ function App() {
             authenticatedView === 'profile' ? (
                 <ProfilePage
                     token={token}
-                    onBack={() => setAuthenticatedView('home')}
+                    user={activeUser}
+                    onBack={goHome}
                     onProfileUpdated={setProfile}
                     onAccountDeleted={handleAccountDeleted}
+                    onOpenLists={() => openFromProfile('lists')}
+                    onOpenHistory={() => openFromProfile('history')}
+                    onOpenSubscription={() => openFromProfile('subscription')}
+                    onOpenAdmin={() => openFromProfile('admin')}
+                    onLogout={handleLogout}
                 />
             ) : authenticatedView === 'movie' ? (
                 <MoviePage
@@ -304,15 +349,15 @@ function App() {
                     backLabel={PLANS_BACK_LABELS[plansReturn] ?? 'Voltar ao início'}
                     onBack={leavePlans}
                     onOpenSubscription={openSubscription}
-                    onOpenProfile={() => setAuthenticatedView('profile')}
+                    onOpenProfile={openProfile}
                 />
             ) : authenticatedView === 'subscription' ? (
                 <SubscriptionPage
                     token={token}
                     user={activeUser}
-                    onBack={goHome}
+                    onBack={openProfile}
                     onOpenPlans={() => openPlans('subscription')}
-                    onOpenProfile={() => setAuthenticatedView('profile')}
+                    onOpenProfile={openProfile}
                 />
             ) : authenticatedView === 'player' && playingMovie ? (
                 <PlayerPage
@@ -322,19 +367,23 @@ function App() {
             ) : authenticatedView === 'history' ? (
                 <HistoryPage
                     token={token}
-                    onBack={goHome}
+                    onBack={openProfile}
+                    onExplore={goHome}
                     onOpenMovie={(movieId) => openMovie(movieId, 'history')}
-                />
-            ) : authenticatedView === 'watchlist' ? (
-                <WatchlistPage
-                    token={token}
-                    onBack={goHome}
-                    onOpenMovie={(movieId) => openMovie(movieId, 'watchlist')}
                 />
             ) : authenticatedView === 'lists' ? (
                 <ListsPage
                     token={token}
-                    onBack={() => setAuthenticatedView('home')}
+                    initialListId={selectedListId}
+                    onSelectList={setSelectedListId}
+                    onBack={openProfile}
+                    onOpenMovie={(movieId) => openMovie(movieId, 'lists')}
+                />
+            ) : authenticatedView === 'admin' && activeUser.isAdmin ? (
+                <AdminPage
+                    token={token}
+                    user={activeUser}
+                    onBack={openProfile}
                 />
             ) : (
                 <HomePage
@@ -342,12 +391,6 @@ function App() {
                     token={token}
                     user={activeUser}
                     onOpenMovie={openMovie}
-                    onOpenLists={() => setAuthenticatedView('lists')}
-                    onOpenWatchlist={() => setAuthenticatedView('watchlist')}
-                    onOpenHistory={() => setAuthenticatedView('history')}
-                    onOpenSubscription={openSubscription}
-                    onOpenProfile={() => setAuthenticatedView('profile')}
-                    onLogout={handleLogout}
                 />
             )
         ) : view === 'forgot' ? (

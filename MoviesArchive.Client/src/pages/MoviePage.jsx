@@ -324,7 +324,15 @@ export default function MoviePage({ movieId, token, user, backLabel, onBack, onP
       {renderBody()}
 
       {listsOpen && movie && (
-        <AddToListDialog token={token} movie={movie} onClose={() => setListsOpen(false)} />
+        <AddToListDialog
+          token={token}
+          movie={movie}
+          onClose={() => {
+            setListsOpen(false)
+            // A watchlist também aparece nessa janela: recarrega o "Na sua watchlist" do painel
+            setMineKey((key) => key + 1)
+          }}
+        />
       )}
 
       <StatusBar

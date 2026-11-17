@@ -101,18 +101,15 @@ public class UserRepository : IUserRepository
 
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
 
-        // O que só interessa à própria pessoa é apagado.
+        // O que só interessa à própria pessoa é apagado (a watchlist também, mesmo se for pública).
         // Avaliações, respostas e listas públicas continuam.
         await _dbContext.Lists
-            .Where(list => list.UserId == id && !list.IsPublic)
+            .Where(list => list.UserId == id && (!list.IsPublic || list.IsWatchlist))
             .ExecuteDeleteAsync();
         // IgnoreQueryFilters: apaga também o que estiver escondido pela classificação indicativa
         await _dbContext.WatchHistory
             .IgnoreQueryFilters()
             .Where(entry => entry.UserId == id)
-            .ExecuteDeleteAsync();
-        await _dbContext.Watchlist
-            .Where(item => item.UserId == id)
             .ExecuteDeleteAsync();
         // Convites recebidos que ainda estavam pendentes deixam de valer
         await _dbContext.FamilyInvites
@@ -182,5 +179,40 @@ public class UserRepository : IUserRepository
     {
         var user = await _dbContext.Users.Where(p => p.PasswordResetToken == token).FirstOrDefaultAsync();
         return user;
+    }
+
+    // Admins primeiro, depois por nome
+    public async Task<List<User>> SearchAsync(string? query, bool onlyAdmins, int limit)
+    {
+        var users = _dbContext.Users
+            .AsNoTracking()
+            .Where(user => user.Name != ReservedUserNames.Removed);
+
+        if (onlyAdmins)
+            users = users.Where(user => user.IsAdmin);
+
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            var pattern = $"%{query.Trim().Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_")}%";
+            users = users.Where(user =>
+                EF.Functions.ILike(user.Name, pattern) || EF.Functions.ILike(user.Email, pattern));
+        }
+
+        return await users
+            .OrderByDescending(user => user.IsAdmin)
+            .ThenBy(user => user.Name)
+            .Take(limit)
+            .ToListAsync();
+    }
+
+    public async Task<bool> SetAdminAsync(Guid id, bool isAdmin)
+    {
+        var user = await GetByIdAsync(id);
+        if (user == null || user.Name == ReservedUserNames.Removed)
+            return false;
+
+        user.IsAdmin = isAdmin;
+        await _dbContext.SaveChangesAsync();
+        return true;
     }
 }

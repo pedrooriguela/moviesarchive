@@ -69,5 +69,6 @@ public class WatchHistoryService : IWatchHistoryService
         ReleaseYear = movie?.ReleaseDate?.Year,
         PosterUrl = movie?.PosterUrl,
         WatchedAt = entry.WatchedAt,
+        MovieRemoved = movie?.IsRemoved ?? false,
     };
 }

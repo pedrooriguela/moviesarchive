@@ -42,7 +42,7 @@ function groupByDay(entries) {
   return groups
 }
 
-export default function HistoryPage({ token, onBack, onOpenMovie }) {
+export default function HistoryPage({ token, onBack, onExplore, onOpenMovie }) {
   const [entries, setEntries] = useState([])
   const [page, setPage] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
@@ -125,7 +125,7 @@ export default function HistoryPage({ token, onBack, onOpenMovie }) {
       return (
         <div className="results-state">
           <p>Você ainda não assistiu nenhum filme. Abra a ficha de um filme e aperte ▶ Assistir.</p>
-          <button type="button" className="btn-secondary" onClick={onBack}>
+          <button type="button" className="btn-secondary" onClick={onExplore ?? onBack}>
             Procurar filmes
           </button>
         </div>
@@ -157,14 +157,24 @@ export default function HistoryPage({ token, onBack, onOpenMovie }) {
                       />
                     </div>
                     <div className="timeline-info">
-                      <button
-                        type="button"
-                        className="link timeline-movie"
-                        onClick={() => onOpenMovie(entry.movieId)}
-                      >
-                        {entry.movieTitle}
-                      </button>
+                      {entry.movieRemoved ? (
+                        // Removido do catálogo: continua no histórico, mas a ficha não existe mais
+                        <span className="timeline-movie timeline-movie-removed">{entry.movieTitle}</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="link timeline-movie"
+                          onClick={() => onOpenMovie(entry.movieId)}
+                        >
+                          {entry.movieTitle}
+                        </button>
+                      )}
                       {entry.releaseYear && <span className="timeline-year">{entry.releaseYear}</span>}
+                      {entry.movieRemoved && (
+                        <span className="badge badge-removed" title="Este filme saiu do catálogo e não pode mais ser assistido">
+                          Fora do catálogo
+                        </span>
+                      )}
                     </div>
                   </li>
                 ))}
@@ -196,7 +206,7 @@ export default function HistoryPage({ token, onBack, onOpenMovie }) {
 
       <nav className="menubar" aria-label="Navegação">
         <button type="button" onClick={onBack}>
-          ← Voltar ao início
+          ← Voltar ao perfil
         </button>
       </nav>
 

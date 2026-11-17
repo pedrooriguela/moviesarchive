@@ -19,6 +19,9 @@ public class MovieListService : IMovieListService
     {
         var title = request.Title.Trim();
 
+        if (MovieList.IsReservedTitle(title))
+            throw new ReservedListTitleException();
+
         if (await _movieListRepository.TitleExistsAsync(userId, title))
             throw new ListTitleAlreadyInUseException();
 
@@ -41,6 +44,10 @@ public class MovieListService : IMovieListService
 
     public async Task<List<ListResponseDto>> GetByUserIdAsync(Guid ownerId, Guid requesterId)
     {
+        // Nas próprias listas, a watchlist sempre aparece, mesmo antes do primeiro filme
+        if (ownerId == requesterId)
+            await _movieListRepository.GetOrCreateWatchlistAsync(ownerId);
+
         var lists = await _movieListRepository.GetVisibleByUserIdAsync(ownerId, requesterId);
         return lists.Select(ToResponse).ToList();
     }
@@ -49,6 +56,13 @@ public class MovieListService : IMovieListService
     {
         var list = await GetOwnedListAsync(listId, userId);
         var title = request.Title.Trim();
+
+        // Na watchlist só mudam a descrição e a visibilidade
+        if (list.IsWatchlist && title != MovieList.WatchlistTitle)
+            throw new WatchlistLockedException();
+
+        if (!list.IsWatchlist && MovieList.IsReservedTitle(title))
+            throw new ReservedListTitleException();
 
         if (await _movieListRepository.TitleExistsAsync(userId, title, listId))
             throw new ListTitleAlreadyInUseException();
@@ -65,6 +79,10 @@ public class MovieListService : IMovieListService
     public async Task DeleteAsync(Guid listId, Guid userId)
     {
         var list = await GetOwnedListAsync(listId, userId);
+
+        if (list.IsWatchlist)
+            throw new WatchlistLockedException();
+
         await _movieListRepository.DeleteAsync(list);
     }
 
@@ -147,6 +165,7 @@ public class MovieListService : IMovieListService
         Title = list.Title,
         Description = list.Description,
         IsPublic = list.IsPublic,
+        IsWatchlist = list.IsWatchlist,
         CreatedAt = list.CreatedAt,
         Items = list.Items
             .OrderBy(item => item.Position)

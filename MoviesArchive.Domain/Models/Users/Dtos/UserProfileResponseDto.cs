@@ -6,4 +6,7 @@ public class UserProfileResponseDto
     public string Email { get; set; } = string.Empty;
     public string? PhotoUrl { get; set; }
     public DateOnly? BirthDate { get; set; }
+
+    // Mostra a entrada "Administração" no perfil
+    public bool IsAdmin { get; set; }
 }

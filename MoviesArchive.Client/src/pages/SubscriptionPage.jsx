@@ -412,7 +412,7 @@ export default function SubscriptionPage({ token, user, onBack, onOpenPlans, onO
 
       <nav className="menubar" aria-label="Navegação">
         <button type="button" onClick={onBack}>
-          ← Voltar ao início
+          ← Voltar ao perfil
         </button>
         <button type="button" onClick={onOpenPlans}>
           Ver planos
