@@ -10,4 +10,8 @@ public class ReviewResponseDto
     public decimal Rating { get; set; }
     public string? Comment { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
+
+    public int LikeCount { get; set; }
+    public bool LikedByMe { get; set; }
+    public int ReplyCount { get; set; }
 }

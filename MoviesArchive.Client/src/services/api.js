@@ -1,5 +1,7 @@
 // Comunicação com a API (.NET) de autenticação.
 // A URL base pode ser sobrescrita com VITE_API_URL no arquivo .env
+import { clearToken, isTokenExpiring, loadToken, saveToken } from './token.js'
+
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:5197').replace(/\/$/, '')
 
 export class ApiError extends Error {
@@ -86,11 +88,72 @@ export function signUp({ name, email, password, birthDate }) {
   })
 }
 
-/** GET /api/users/signin?Name=...&Password=... — retorna { token } */
+/** GET /api/users/signin?Name=...&Password=... — retorna { token } e grava o cookie do refresh token */
 export async function signIn({ name, password }) {
   const params = new URLSearchParams({ Name: name, Password: password })
-  const data = await request(`/api/users/signin?${params}`, { method: 'GET' })
+  // credentials: 'include' para o navegador aceitar o cookie httpOnly que a API devolve
+  const data = await request(`/api/users/signin?${params}`, { method: 'GET', credentials: 'include' })
   return data.token
+}
+
+// ---- Sessão (refresh token) ----
+// O JWT dura 15 minutos. Antes de vencer, ou quando a API responde 401, o authFetch pede
+// um JWT novo em /api/auth/refresh; o refresh token vai sozinho no cookie httpOnly.
+
+const sessionListeners = new Set()
+
+/** Avisa quando a sessão muda: ('refreshed', token) ou ('expired'). Devolve a função de cancelar. */
+export function onSessionChange(listener) {
+  sessionListeners.add(listener)
+  return () => sessionListeners.delete(listener)
+}
+
+function notifySession(event, token) {
+  for (const listener of sessionListeners) listener(event, token)
+}
+
+let refreshInFlight = null
+
+/** POST /api/auth/refresh — troca o refresh token (cookie) por um JWT novo. Uma renovação por vez. */
+export function refreshSession() {
+  if (!refreshInFlight) {
+    refreshInFlight = request('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+      .then((data) => {
+        saveToken(data.token)
+        notifySession('refreshed', data.token)
+        return data.token
+      })
+      .finally(() => {
+        refreshInFlight = null
+      })
+  }
+  return refreshInFlight
+}
+
+/** POST /api/auth/logout — encerra a sessão no servidor e apaga o cookie. Falhas são ignoradas. */
+export async function logout() {
+  try {
+    await request('/api/auth/logout', { method: 'POST', credentials: 'include' })
+  } catch {
+    // Sem conexão: o cookie vence sozinho; o token local é apagado de qualquer forma
+  }
+}
+
+// Renova; se não der, confere se outra aba já renovou antes de encerrar a sessão
+async function renewOrExpire(usedToken) {
+  try {
+    return await refreshSession()
+  } catch (error) {
+    const stored = loadToken()
+    if (stored && stored !== usedToken && !isTokenExpiring(stored)) return stored
+
+    // Sem conexão com a API não é sessão vencida: mantém o login e mostra o erro
+    if (!error.status) throw error
+
+    clearToken()
+    notifySession('expired')
+    throw new ApiError('Sua sessão expirou. Entre de novo.', { status: 401, code: 'session-expired' })
+  }
 }
 
 // ---- Recuperação de senha ----
@@ -114,12 +177,24 @@ export function resetPassword(token, newPassword) {
   })
 }
 
-/** Helper para chamadas futuras a endpoints protegidos ([Authorize]) */
-export function authFetch(path, token, options = {}) {
-  return request(path, {
-    ...options,
-    headers: { ...options.headers, Authorization: `Bearer ${token}` },
-  })
+function withAuth(options, token) {
+  return { ...options, headers: { ...options.headers, Authorization: `Bearer ${token}` } }
+}
+
+/** Chamada a endpoint protegido ([Authorize]); renova o JWT sozinho quando ele vence */
+export async function authFetch(path, token, options = {}) {
+  // O token mais novo pode ter sido salvo por outra chamada (ou aba) depois que a tela o recebeu
+  let current = loadToken() || token
+  if (isTokenExpiring(current)) current = await renewOrExpire(current)
+
+  try {
+    return await request(path, withAuth(options, current))
+  } catch (error) {
+    if (error.status !== 401) throw error
+    // JWT recusado (venceu no caminho, ou a API reiniciou com outra chave): renova e tenta uma vez
+    const fresh = await renewOrExpire(current)
+    return request(path, withAuth(options, fresh))
+  }
 }
 
 export function getMyProfile(token) {

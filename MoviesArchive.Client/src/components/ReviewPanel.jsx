@@ -59,7 +59,14 @@ export default function ReviewPanel({ movieId, token, state, onStateChange, onRe
   }
 
   async function handleDelete() {
-    if (!window.confirm('Excluir sua avaliação deste filme?')) return
+    const replies = saved?.replyCount ?? 0
+    const warning =
+      replies === 1
+        ? ' A resposta a ela também será apagada.'
+        : replies > 1
+          ? ` As ${replies} respostas a ela também serão apagadas.`
+          : ''
+    if (!window.confirm(`Excluir sua avaliação deste filme?${warning}`)) return
     setBusy('delete')
     setError('')
     setNotice('')

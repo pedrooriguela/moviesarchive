@@ -41,6 +41,13 @@ dotnet user-secrets set "JwtSettings:Audience" "MoviesArchive"
 
 `Issuer` e `Audience` devem corresponder aos valores usados na emissão dos tokens. Com a mesma `Key` em todas as máquinas, um token gerado por uma instância local também é válido nas outras.
 
+A sessão usa dois tokens: o JWT, que vale **15 minutos** e vai em cada requisição, e um *refresh token*, que vale **7 dias**, fica num cookie `httpOnly` e é trocado por um novo a cada renovação. O front renova o JWT sozinho quando ele vence. Para mudar os prazos (opcional):
+
+```bash
+dotnet user-secrets set "JwtSettings:AccessTokenMinutes" "15"
+dotnet user-secrets set "JwtSettings:RefreshTokenDays" "7"
+```
+
 **E-mail (SMTP do Gmail, usado no envio do link de redefinição de senha):**
 
 ```bash
@@ -73,6 +80,34 @@ psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f data
 O script muda `Reviews.Rating` de inteiro (1 a 5) para `numeric(2,1)` (0,5 a 5, em passos de 0,5) e cria a tabela `Watchlist`. As notas já gravadas continuam válidas, e rodar o script de novo não quebra nada.
 
 A nota exibida nos filmes agora é a média das avaliações (tabela `Reviews`), e a coluna `Movies.Rating` deixou de ser usada pela API. Quando **todo o grupo** já estiver com a API nova, ela pode ser apagada com `database/2026-11-03_remover_movies_rating.sql`. Esse passo apaga as notas fixas antigas e não tem volta.
+
+### 2.2.1. Respostas, curtidas, sessões e vídeos (uma vez só)
+
+Também uma única vez, por **uma pessoa do grupo**:
+
+```bash
+psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f database/2026-11-17_respostas_curtidas_tokens_video.sql
+```
+
+O script:
+
+- completa a tabela `Responses` (respostas às avaliações) com `ParentResponseId`, para responder a uma resposta, e `DeletedAt`, para que uma resposta excluída que já foi respondida continue na conversa sem o texto;
+- cria `ReviewLikes` e `ResponseLikes` (curtidas) e `RefreshTokens` (sessões; guarda só o hash do token);
+- cria a coluna `Movies.VideoUrl` e preenche, como exemplo, *A Noite dos Mortos-Vivos* (1968, domínio público), se o filme estiver no banco.
+
+Para colocar vídeo em outro filme, grave em `VideoUrl` o endereço direto de um arquivo **MP4 (H.264)** ou **WebM**, que é o que os navegadores tocam. O Internet Archive tem muitos filmes antigos em domínio público, com links do tipo `https://archive.org/download/<item>/<arquivo>.mp4`:
+
+```sql
+UPDATE "Movies" SET "VideoUrl" = 'https://archive.org/download/<item>/<arquivo>.mp4' WHERE "Id" = '<id do filme>';
+```
+
+Depois dele, rode também o script das notificações (avisos de curtidas e respostas):
+
+```bash
+psql "host=143.107.102.29 port=65432 dbname=t3_grupo_6 user=admin_t3_g6" -f database/2026-11-17_notificacoes.sql
+```
+
+Filme sem `VideoUrl` aparece com o botão "Vídeo indisponível". O endereço do vídeo só é enviado ao front na resposta do play (`POST /api/history`), depois de a API conferir a assinatura.
 
 ### 2.3. Iniciar a API
 

@@ -43,6 +43,10 @@ public class HistoryController : Controller
         {
             return NotFound(new { field = "movieId", message = ex.Message });
         }
+        catch (VideoUnavailableException ex)
+        {
+            return Conflict(new { code = "video-unavailable", message = ex.Message });
+        }
     }
 
     // Linha do tempo do usuário logado, do mais recente para o mais antigo

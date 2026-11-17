@@ -7,6 +7,8 @@ using MoviesArchive.Domain.Models.Watchlist;
 using MoviesArchive.Domain.Models.History;
 using MoviesArchive.Domain.Models.Plans;
 using MoviesArchive.Domain.Models.Subscriptions;
+using MoviesArchive.Domain.Models.Auth;
+using MoviesArchive.Domain.Models.Notifications;
 using Microsoft.EntityFrameworkCore;
 
 namespace MoviesArchive.Infra.Database;
@@ -33,6 +35,15 @@ public class MoviesArchiveDbContext : DbContext
     public DbSet<Movie> Movies => Set<Movie>();
 
     public DbSet<Review> Reviews => Set<Review>();
+
+    // Respostas às avaliações (tabela "Responses") e curtidas
+    public DbSet<ReviewReply> ReviewReplies => Set<ReviewReply>();
+    public DbSet<ReviewLike> ReviewLikes => Set<ReviewLike>();
+    public DbSet<ReviewReplyLike> ReviewReplyLikes => Set<ReviewReplyLike>();
+
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     public DbSet<MovieList> Lists => Set<MovieList>();
 
@@ -134,6 +145,59 @@ public class MoviesArchiveDbContext : DbContext
         modelBuilder.Entity<Movie>()
             .Property(movie => movie.Genres)
             .HasColumnType("text[]");
+
+        // ---- Respostas e curtidas (ver database/2026-11-17_respostas_curtidas_tokens_video.sql)
+        modelBuilder.Entity<ReviewReply>(reply =>
+        {
+            reply.ToTable("Responses");
+            reply.Property(item => item.ParentReplyId).HasColumnName("ParentResponseId");
+            reply.Ignore(item => item.IsDeleted);
+
+            reply.HasOne<Review>()
+                .WithMany()
+                .HasForeignKey(item => item.ReviewId);
+
+            reply.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(item => item.UserId);
+
+            reply.HasOne<ReviewReply>()
+                .WithMany()
+                .HasForeignKey(item => item.ParentReplyId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<ReviewLike>(like =>
+        {
+            like.ToTable("ReviewLikes");
+            like.HasKey(item => new { item.UserId, item.ReviewId });
+        });
+
+        modelBuilder.Entity<ReviewReplyLike>(like =>
+        {
+            like.ToTable("ResponseLikes");
+            like.HasKey(item => new { item.UserId, item.ReplyId });
+            like.Property(item => item.ReplyId).HasColumnName("ResponseId");
+        });
+
+        // ---- Notificações de curtidas e respostas (ver database/2026-11-17_notificacoes.sql)
+        modelBuilder.Entity<Notification>(notification =>
+        {
+            notification.ToTable("Notifications");
+            notification.Property(item => item.Type).HasConversion<string>();
+            notification.Property(item => item.ReplyId).HasColumnName("ResponseId");
+            notification.HasIndex(item => new { item.UserId, item.CreatedAt });
+        });
+
+        // ---- Sessões: refresh tokens guardados como hash
+        modelBuilder.Entity<RefreshToken>(token =>
+        {
+            token.ToTable("RefreshTokens");
+            token.HasIndex(item => item.TokenHash).IsUnique();
+            token.HasOne<User>()
+                .WithMany()
+                .HasForeignKey(item => item.UserId);
+        });
 
         // translate() do PostgreSQL, usada pela busca para ignorar acentos (ver SearchText)
         modelBuilder.HasDbFunction(typeof(SearchText).GetMethod(nameof(SearchText.Translate))!)

@@ -1,5 +1,9 @@
+import { useEffect, useRef, useState } from 'react'
 import Avatar from './Avatar.jsx'
+import LikeButton from './LikeButton.jsx'
+import ReviewThread from './ReviewThread.jsx'
 import { PixelStarRow } from './PixelStar.jsx'
+import { setReviewLike } from '../services/reviews.js'
 import { RATING_STEPS, formatRating } from '../services/reviews.js'
 
 const DATE_FORMAT = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -41,9 +45,20 @@ function Histogram({ histogram }) {
   )
 }
 
-function ReviewItem({ review, isMine }) {
+function ReviewItem({ review, isMine, token, userId, focus }) {
+  const focused = focus?.reviewId === review.id
+  const itemRef = useRef(null)
+  // Aberta por uma notificação: a conversa já vem aberta e a avaliação aparece na tela
+  const [threadOpen, setThreadOpen] = useState(focused)
+
+  useEffect(() => {
+    if (focused && !focus.replyId) itemRef.current?.scrollIntoView({ block: 'center' })
+  }, [focused, focus])
+  const [replyCount, setReplyCount] = useState(review.replyCount ?? 0)
+  const threadId = `respostas-${review.id}`
+
   return (
-    <li className={isMine ? 'review is-mine' : 'review'}>
+    <li ref={itemRef} className={`${isMine ? 'review is-mine' : 'review'}${focused ? ' is-focused' : ''}`}>
       <Avatar name={review.userName} photoUrl={review.userPhotoUrl} />
       <div className="review-body">
         <p className="review-meta">
@@ -61,13 +76,46 @@ function ReviewItem({ review, isMine }) {
         ) : (
           <p className="review-comment is-empty">Avaliou sem comentar.</p>
         )}
+
+        <div className="review-actions">
+          <LikeButton
+            liked={review.likedByMe ?? false}
+            count={review.likeCount ?? 0}
+            subject={isMine ? 'sua avaliação' : `a avaliação de ${review.userName}`}
+            onChange={(liked) => setReviewLike(review.id, liked, token)}
+          />
+          <button
+            type="button"
+            className="link-button"
+            aria-expanded={threadOpen}
+            aria-controls={threadId}
+            onClick={() => setThreadOpen((open) => !open)}
+          >
+            {threadOpen
+              ? 'Fechar respostas'
+              : replyCount > 0
+                ? `Ver ${plural(replyCount, 'resposta', 'respostas')}`
+                : 'Responder'}
+          </button>
+        </div>
+
+        {threadOpen && (
+          <ReviewThread
+            id={threadId}
+            review={review}
+            token={token}
+            userId={userId}
+            focusReplyId={focused ? focus.replyId : null}
+            onCountChange={setReplyCount}
+          />
+        )}
       </div>
     </li>
   )
 }
 
 // Média, distribuição e lista de avaliações do filme
-export default function ReviewsSection({ data, status, error, userId, onRetry, onLoadMore, loadingMore }) {
+export default function ReviewsSection({ data, status, error, userId, token, focus, onRetry, onLoadMore, loadingMore }) {
   return (
     <section className="reviews" aria-labelledby="avaliacoes-titulo">
       <h2 id="avaliacoes-titulo" className="movie-section-title">
@@ -115,7 +163,14 @@ export default function ReviewsSection({ data, status, error, userId, onRetry, o
           ) : (
             <ul className="review-list">
               {data.items.map((review) => (
-                <ReviewItem key={review.id} review={review} isMine={review.userId === userId} />
+                <ReviewItem
+                  key={review.id}
+                  review={review}
+                  isMine={review.userId === userId}
+                  token={token}
+                  userId={userId}
+                  focus={focus}
+                />
               ))}
             </ul>
           )}

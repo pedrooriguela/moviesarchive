@@ -1,7 +1,9 @@
+using MoviesArchive.Domain.Common;
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Movies;
 using MoviesArchive.Domain.Models.Movies.Dtos;
+using MoviesArchive.Domain.Models.Recommendations;
 
 namespace MoviesArchive.Infra.Services;
 
@@ -10,11 +12,14 @@ public class MovieCatalogService : IMovieCatalogService
     private const int ShelfSize = 10;
 
     private readonly IMovieRepository _movieRepository;
+    private readonly ViewerContext _viewer;
 
     public MovieCatalogService(
-        IMovieRepository movieRepository)
+        IMovieRepository movieRepository,
+        ViewerContext viewer)
     {
         _movieRepository = movieRepository;
+        _viewer = viewer;
     }
 
     public async Task<PagedResponseDto<MovieCardDto>> SearchAsync(MovieSearchFilter filter)
@@ -41,10 +46,22 @@ public class MovieCatalogService : IMovieCatalogService
 
     public async Task<MovieHomeDto> GetHomeAsync()
     {
+        var shelves = new List<MovieShelfDto>();
+
+        // Primeira prateleira: recomendações para quem está logado (só aparece se houver histórico)
+        var recommended = await GetRecommendationsAsync();
+        if (recommended.Count > 0)
+        {
+            shelves.Add(new MovieShelfDto
+            {
+                Id = "recomendados",
+                Title = "Recomendado para você",
+                Movies = recommended,
+            });
+        }
+
         // Só entram filmes que já têm avaliações
         var topRated = await _movieRepository.GetTopRatedAsync(ShelfSize);
-
-        var shelves = new List<MovieShelfDto>();
         if (topRated.Count > 0)
         {
             shelves.Add(new MovieShelfDto
@@ -80,20 +97,56 @@ public class MovieCatalogService : IMovieCatalogService
         };
     }
 
-    // Cartões com a média das avaliações (tabela Reviews); sem avaliações, Rating fica null
-    internal async Task<List<MovieCardDto>> ToCardsAsync(IReadOnlyCollection<Movie> movies)
+    // Cartões com a média das avaliações (tabela Reviews; sem avaliações, Rating fica null)
+    // e com a marca de "visto" para quem está logado
+    public async Task<List<MovieCardDto>> ToCardsAsync(IReadOnlyCollection<Movie> movies)
     {
-        var stats = await _movieRepository.GetRatingStatsAsync(movies.Select(movie => movie.Id).ToList());
-        return movies.Select(movie => ToCard(movie, stats.GetValueOrDefault(movie.Id))).ToList();
+        var ids = movies.Select(movie => movie.Id).ToList();
+        var stats = await _movieRepository.GetRatingStatsAsync(ids);
+        var watched = await GetWatchedAsync(ids);
+        return movies.Select(movie => ToCard(movie, stats.GetValueOrDefault(movie.Id), watched.Contains(movie.Id))).ToList();
     }
+
+    // O cálculo está em RecommendationEngine (e explicado em docs/recomendacoes.md);
+    // aqui só se junta o que ele precisa
+    private async Task<List<MovieCardDto>> GetRecommendationsAsync()
+    {
+        if (_viewer.UserId is not Guid userId)
+            return [];
+
+        var signals = await _movieRepository.GetViewerSignalsAsync(userId);
+        if (signals.IsEmpty)
+            return [];
+
+        // O filtro de classificação indicativa já vale aqui: menores só recebem filmes da idade deles
+        var catalog = await _movieRepository.GetAllAsync();
+        var community = await _movieRepository.GetRatingStatsAsync(catalog.Select(movie => movie.Id).ToList());
+
+        var recommendations = RecommendationEngine.Recommend(catalog, signals, community, ShelfSize);
+        if (recommendations.Count == 0)
+            return [];
+
+        var cards = await ToCardsAsync(recommendations.Select(item => item.Movie).ToList());
+        for (var index = 0; index < cards.Count; index++)
+            cards[index].Reason = recommendations[index].Reason;
+
+        return cards;
+    }
+
+    // "Visto" = a pessoa deu play pelo menos uma vez (tem entrada no WatchHistory)
+    private async Task<HashSet<Guid>> GetWatchedAsync(IReadOnlyCollection<Guid> movieIds) =>
+        _viewer.UserId is Guid userId
+            ? await _movieRepository.GetWatchedMovieIdsAsync(userId, movieIds)
+            : [];
 
     private async Task<MovieDetailDto> ToDetailAsync(Movie movie)
     {
         var stats = await _movieRepository.GetRatingStatsAsync([movie.Id]);
-        return ToDetail(movie, stats.GetValueOrDefault(movie.Id));
+        var watched = await GetWatchedAsync([movie.Id]);
+        return ToDetail(movie, stats.GetValueOrDefault(movie.Id), watched.Contains(movie.Id));
     }
 
-    private static MovieCardDto ToCard(Movie movie, MovieRatingStats? stats) => new()
+    private static MovieCardDto ToCard(Movie movie, MovieRatingStats? stats, bool watched) => new()
     {
         Id = movie.Id,
         Title = movie.Title,
@@ -104,9 +157,10 @@ public class MovieCatalogService : IMovieCatalogService
         Rating = stats?.AverageRating,
         PosterUrl = movie.PosterUrl,
         AgeRating = movie.AgeRating,
+        Watched = watched,
     };
 
-    private static MovieDetailDto ToDetail(Movie movie, MovieRatingStats? stats) => new()
+    private static MovieDetailDto ToDetail(Movie movie, MovieRatingStats? stats, bool watched) => new()
     {
         Id = movie.Id,
         Title = movie.Title,
@@ -120,6 +174,8 @@ public class MovieCatalogService : IMovieCatalogService
         PosterUrl = movie.PosterUrl,
         AgeRating = movie.AgeRating,
         RuntimeMinutes = movie.RuntimeMinutes,
+        HasVideo = !string.IsNullOrWhiteSpace(movie.VideoUrl),
+        Watched = watched,
     };
 
     // Converte os códigos gravados no banco para o nome exibido, ignorando valores desconhecidos

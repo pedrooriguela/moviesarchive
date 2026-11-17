@@ -1,4 +1,5 @@
-using System.Security.Claims;
+﻿using System.Security.Claims;
+using MoviesArchive.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
 using MoviesArchive.Domain.Exceptions;
 using MoviesArchive.Domain.Interfaces;
@@ -61,8 +62,10 @@ public class UserController : Controller
     {
         try
         {
-            var token = await _userLoginService.LogInAsync(request);
-            return Ok(new { token });
+            var tokens = await _userLoginService.LogInAsync(request);
+            // O refresh token vai no cookie httpOnly; o corpo leva só o JWT curto
+            RefreshTokenCookie.Write(Response, tokens.RefreshToken, tokens.RefreshTokenExpiresAt);
+            return Ok(new { token = tokens.AccessToken });
         }
         catch ( WrongUsernameOrPasswordException ex)
         {

@@ -14,4 +14,10 @@ public class MovieCardDto
 
     // Classificação indicativa: idade mínima, 0 = livre
     public int AgeRating { get; set; }
+
+    // A pessoa logada já deu play neste filme
+    public bool Watched { get; set; }
+
+    // Só na prateleira "Recomendado para você": por que o filme foi recomendado
+    public string? Reason { get; set; }
 }
