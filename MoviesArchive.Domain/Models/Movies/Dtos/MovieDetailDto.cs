@@ -17,4 +17,7 @@ public class MovieDetailDto
     // Classificação indicativa: idade mínima, 0 = livre
     public int AgeRating { get; set; }
     public int? RuntimeMinutes { get; set; }
+
+    // A pessoa logada já deu play neste filme
+    public bool Watched { get; set; }
 }

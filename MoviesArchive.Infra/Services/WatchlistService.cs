@@ -9,15 +9,16 @@ public class WatchlistService : IWatchlistService
 {
     private readonly IWatchlistRepository _watchlistRepository;
     private readonly IMovieRepository _movieRepository;
-    private readonly MovieCatalogService _movieCatalogService;
+    private readonly IMovieCatalogService _movieCatalogService;
 
     public WatchlistService(
         IWatchlistRepository watchlistRepository,
-        IMovieRepository movieRepository)
+        IMovieRepository movieRepository,
+        IMovieCatalogService movieCatalogService)
     {
         _watchlistRepository = watchlistRepository;
         _movieRepository = movieRepository;
-        _movieCatalogService = new MovieCatalogService(movieRepository);
+        _movieCatalogService = movieCatalogService;
     }
 
     // Mesmos cartões do catálogo, com a média das avaliações

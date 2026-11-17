@@ -1,6 +1,7 @@
 using MoviesArchive.Infra.Database;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Movies;
+using MoviesArchive.Domain.Models.Recommendations;
 using Microsoft.EntityFrameworkCore;
 
 namespace MoviesArchive.Infra.Repositories;
@@ -103,6 +104,54 @@ public class MovieRepository : IMovieRepository
             default:
                 return query.OrderBy(movie => movie.Title).ThenBy(movie => movie.Id);
         }
+    }
+
+    // Sujeito ao filtro de classificação indicativa, como todas as consultas de filmes
+    public Task<List<Movie>> GetAllAsync() =>
+        _dbContext.Movies
+            .AsNoTracking()
+            .OrderBy(movie => movie.Title)
+            .ToListAsync();
+
+    public async Task<ViewerSignals> GetViewerSignalsAsync(Guid userId)
+    {
+        // Quantas vezes deu play em cada filme
+        var watchCounts = await _dbContext.WatchHistory
+            .AsNoTracking()
+            .Where(entry => entry.UserId == userId)
+            .GroupBy(entry => entry.MovieId)
+            .Select(group => new { MovieId = group.Key, Plays = group.Count() })
+            .ToDictionaryAsync(row => row.MovieId, row => row.Plays);
+
+        // Uma avaliação por filme (índice único em Reviews)
+        var ratings = await _dbContext.Reviews
+            .AsNoTracking()
+            .Where(review => review.UserId == userId)
+            .ToDictionaryAsync(review => review.MovieId, review => review.Rating);
+
+        var watchlist = await _dbContext.Watchlist
+            .AsNoTracking()
+            .Where(item => item.UserId == userId)
+            .Select(item => item.MovieId)
+            .ToListAsync();
+
+        return new ViewerSignals(watchCounts, ratings, watchlist.ToHashSet());
+    }
+
+    public async Task<HashSet<Guid>> GetWatchedMovieIdsAsync(Guid userId, IReadOnlyCollection<Guid> movieIds)
+    {
+        if (movieIds.Count == 0)
+            return [];
+
+        var ids = movieIds.Distinct().ToList();
+        var watched = await _dbContext.WatchHistory
+            .AsNoTracking()
+            .Where(entry => entry.UserId == userId && ids.Contains(entry.MovieId))
+            .Select(entry => entry.MovieId)
+            .Distinct()
+            .ToListAsync();
+
+        return watched.ToHashSet();
     }
 
     public async Task<Movie?> GetByIdAsync(Guid movieId)
