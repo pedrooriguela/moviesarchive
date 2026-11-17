@@ -7,12 +7,12 @@ const DESTINATIONS = [
   {
     value: 'anonymize',
     title: 'Manter meu conteúdo de forma anônima',
-    text: 'Avaliações, respostas e listas públicas continuam, assinadas como “Usuário removido”. Listas privadas, favoritos, seguidores e o histórico de filmes assistidos são apagados.',
+    text: 'Avaliações, respostas e listas públicas continuam, assinadas como “Usuário removido”. Listas privadas, watchlist, favoritos, seguidores e o histórico de filmes assistidos são apagados.',
   },
   {
     value: 'delete',
     title: 'Apagar tudo',
-    text: 'Listas, avaliações, respostas, favoritos, seguidores e histórico são removidos junto com a conta.',
+    text: 'Listas, watchlist, avaliações, respostas, favoritos, seguidores e histórico são removidos junto com a conta.',
   },
 ]
 
@@ -53,7 +53,8 @@ export default function DeleteAccountDialog({ token, onClose, onDeleted }) {
   return (
     <Dialog title="Excluir conta" onClose={close}>
       <p className="dialog-lead">
-        Esta ação não pode ser desfeita. Escolha o que acontece com o que você criou.
+        Esta ação não pode ser desfeita. Se você for titular de um plano, ele é cancelado e os
+        integrantes perdem o acesso aos filmes. Escolha o que acontece com o que você criou.
       </p>
 
       {error && <div className="alert alert-error" role="alert">{error}</div>}

@@ -19,7 +19,7 @@ const SORT_OPTIONS = [
 ]
 const DEFAULT_FORM = { query: '', language: '', yearFrom: '', yearTo: '', genres: [], sort: 'default' }
 
-export default function HomePage({ user, token, onOpenLists, onOpenUsers, onOpenWatchlist, onOpenHistory, onOpenProfile, onLogout, onOpenMovie }) {
+export default function HomePage({ user, token, onOpenLists, onOpenUsers, onOpenWatchlist, onOpenHistory, onOpenSubscription, onOpenProfile, onLogout, onOpenMovie }) {
   const [form, setForm] = useState(DEFAULT_FORM) // o que está nos campos
   const [applied, setApplied] = useState(null) // o que foi buscado; null = ainda não buscou
   const [page, setPage] = useState(1)
@@ -188,6 +188,11 @@ export default function HomePage({ user, token, onOpenLists, onOpenUsers, onOpen
       return (
         <div className="results-state">
           <p>Nenhum filme com esses filtros. Remova um filtro para ver mais resultados.</p>
+          {applied?.query && (
+            <p className="field-hint">
+              A busca por texto olha só o título e o diretor. Para gêneros, use as caixas em Filtros.
+            </p>
+          )}
           <button type="button" className="btn-secondary" onClick={clearAll}>
             Limpar filtros
           </button>
@@ -244,6 +249,7 @@ export default function HomePage({ user, token, onOpenLists, onOpenUsers, onOpen
         <button type="button" onClick={onOpenLists}>Minhas listas</button>
         <button type="button" onClick={onOpenHistory}>Meu histórico</button>
         <button type="button" onClick={onOpenUsers}>Comunidade</button>
+        <button type="button" onClick={onOpenSubscription}>Assinatura</button>
         <button type="button" onClick={onOpenProfile}>Meu perfil</button>
         <button type="button" onClick={onLogout}>Sair</button>
       </nav>
@@ -257,11 +263,11 @@ export default function HomePage({ user, token, onOpenLists, onOpenUsers, onOpen
 
         <form role="search" onSubmit={handleSubmit} noValidate>
           <div className="field">
-            <label htmlFor="busca-texto">Título, diretor ou gênero</label>
+            <label htmlFor="busca-texto">Título ou diretor</label>
             <input
               id="busca-texto"
               type="search"
-              placeholder="Ex.: Metropolis, Kurosawa, terror"
+              placeholder="Ex.: Metropolis, Kurosawa, kubrick iluminado"
               value={form.query}
               onChange={(event) => updateForm({ query: event.target.value })}
               autoFocus

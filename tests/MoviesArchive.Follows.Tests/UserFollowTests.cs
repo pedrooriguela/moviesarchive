@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MoviesArchive.Api.Controllers;
+using MoviesArchive.Domain.Common;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Users;
 using MoviesArchive.Domain.Models.Users.Dtos;
@@ -98,7 +99,7 @@ public class UserFollowTests
     public void ModelMatchesExistingFollowerTable()
     {
         using var db = new MoviesArchiveDbContext(new DbContextOptionsBuilder<MoviesArchiveDbContext>()
-            .UseNpgsql("Host=localhost;Database=unused;Username=unused").Options);
+            .UseNpgsql("Host=localhost;Database=unused;Username=unused").Options, new ViewerContext());
         var entity = db.Model.FindEntityType(typeof(UserFollower))!;
         Assert.Equal("UserFollowers", entity.GetTableName());
         Assert.Equal(new[] { "FollowerId", "FollowingId" }, entity.FindPrimaryKey()!.Properties.Select(p => p.Name));

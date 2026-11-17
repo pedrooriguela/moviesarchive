@@ -1,5 +1,3 @@
-using System.Globalization;
-using System.Text;
 using MoviesArchive.Infra.Database;
 using MoviesArchive.Domain.Interfaces;
 using MoviesArchive.Domain.Models.Movies;
@@ -19,13 +17,8 @@ public class MovieRepository : IMovieRepository
 
     public async Task<List<Movie>> SearchByTitleAsync(string? search, int limit)
     {
-        var query = _dbContext.Movies.AsNoTracking();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var pattern = ToLikePattern(search);
-            query = query.Where(movie => EF.Functions.ILike(movie.Title, pattern));
-        }
+        // Seletor de filmes das listas: só o título, com as mesmas regras de acento e palavras da busca
+        var query = ApplyTextSearch(_dbContext.Movies.AsNoTracking(), search, includeDirector: false);
 
         return await query
             .OrderBy(movie => movie.Title)
@@ -35,19 +28,8 @@ public class MovieRepository : IMovieRepository
 
     public async Task<(List<Movie> Items, int TotalCount)> SearchAsync(MovieSearchFilter filter)
     {
-        var query = _dbContext.Movies.AsNoTracking().AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(filter.Query))
-        {
-            var pattern = ToLikePattern(filter.Query);
-            // Gêneros são buscados pelo nome exibido (ex.: "ficcao" acha "Ficção científica")
-            var genreMovieIds = await GetMovieIdsByGenresAsync(MatchingGenreCodes(filter.Query));
-
-            query = query.Where(movie =>
-                EF.Functions.ILike(movie.Title, pattern) ||
-                (movie.Director != null && EF.Functions.ILike(movie.Director, pattern)) ||
-                genreMovieIds.Contains(movie.Id));
-        }
+        // Texto: título e diretor. Gênero não entra aqui, porque tem o filtro próprio logo abaixo.
+        var query = ApplyTextSearch(_dbContext.Movies.AsNoTracking(), filter.Query, includeDirector: true);
 
         if (!string.IsNullOrWhiteSpace(filter.Language))
         {
@@ -189,38 +171,23 @@ public class MovieRepository : IMovieRepository
             .ToListAsync();
     }
 
-    private async Task<List<Guid>> GetMovieIdsByGenresAsync(IEnumerable<string> genreCodes)
+    // Cada palavra da busca precisa aparecer no título (ou no diretor), ignorando acentos e maiúsculas:
+    // "kubrick iluminado" acha O Iluminado, "toquio" acha Viagem a Tóquio
+    private static IQueryable<Movie> ApplyTextSearch(IQueryable<Movie> query, string? text, bool includeDirector)
     {
-        var ids = new List<Guid>();
-        foreach (var code in genreCodes)
+        foreach (var term in SearchText.Terms(text))
         {
-            ids.AddRange(await _dbContext.Movies
-                .AsNoTracking()
-                .Where(movie => movie.Genres.Contains(code))
-                .Select(movie => movie.Id)
-                .ToListAsync());
+            var pattern = ToLikePattern(term);
+            query = includeDirector
+                ? query.Where(movie =>
+                    EF.Functions.Like(SearchText.Translate(movie.Title.ToLower(), SearchText.Accented, SearchText.Plain), pattern) ||
+                    (movie.Director != null &&
+                     EF.Functions.Like(SearchText.Translate(movie.Director.ToLower(), SearchText.Accented, SearchText.Plain), pattern)))
+                : query.Where(movie =>
+                    EF.Functions.Like(SearchText.Translate(movie.Title.ToLower(), SearchText.Accented, SearchText.Plain), pattern));
         }
 
-        return ids.Distinct().ToList();
-    }
-
-    // Códigos dos gêneros cujo nome exibido contém o texto buscado
-    private static List<string> MatchingGenreCodes(string query)
-    {
-        var term = Normalize(query);
-        return Enum.GetValues<Genre>()
-            .Where(genre => Normalize(genre.ToDisplayName()).Contains(term))
-            .Select(genre => genre.ToString())
-            .ToList();
-    }
-
-    // Minúsculas e sem acentos, para comparar textos
-    private static string Normalize(string text)
-    {
-        var withoutMarks = text.Trim().Normalize(NormalizationForm.FormD)
-            .Where(character => CharUnicodeInfo.GetUnicodeCategory(character) != UnicodeCategory.NonSpacingMark);
-
-        return new string(withoutMarks.ToArray()).ToLowerInvariant();
+        return query;
     }
 
     // Escapa os curingas do LIKE para buscar o texto literalmente
